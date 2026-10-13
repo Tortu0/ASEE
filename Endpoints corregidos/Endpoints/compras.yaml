@@ -1,0 +1,800 @@
+openapi: 3.0.3
+info:
+  title: API de Compras (Merchandising)
+  description: >
+    Microservicio de la tienda online del club: catálogo, carrito y pedidos.
+    Realiza una llamada síncrona a otro microservicio:
+
+    Compras -> Usuarios -> GET /usuarios/{usuarioId}/socio (para aplicar el
+    descuento de socio al consultar el carrito y confirmar un pedido)
+
+    Comparte pasarela de pago y sistema de facturación con Entradas. Se
+    accede siempre a través del API Gateway.
+  version: 1.0.0
+
+servers:
+  - url: https://api.club.example/compras/v1
+    description: Servidor de producción (vía API Gateway)
+  - url: http://localhost:8084/v1
+    description: Entorno local de desarrollo
+
+tags:
+  - name: Productos
+    description: Catálogo de merchandising
+  - name: Carrito
+    description: Carrito del usuario autenticado
+  - name: Pedidos
+    description: Pedidos y su seguimiento
+
+paths:
+  /productos:
+    get:
+      tags: [Productos]
+      summary: Listar el catálogo
+      operationId: listarProductos
+      security: []
+      parameters:
+        - name: categoria
+          in: query
+          schema:
+            type: string
+            enum: [camiseta, bufanda, gorra, accesorio, otro]
+        - name: jugadorId
+          in: query
+          description: Productos asociados a un jugador (camisetas con su dorsal)
+          schema:
+            type: string
+            format: uuid
+        - name: patrocinadorId
+          in: query
+          description: Productos patrocinados por una marca
+          schema:
+            type: string
+            format: uuid
+        - name: pagina
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: tamano
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: Listado paginado de productos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Producto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+    post:
+      tags: [Productos]
+      summary: Añadir un producto al catálogo (staff/admin)
+      operationId: crearProducto
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductoCreate'
+      responses:
+        '201':
+          description: Producto creado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Producto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /productos/{productoId}:
+    parameters:
+      - $ref: '#/components/parameters/ProductoId'
+    get:
+      tags: [Productos]
+      summary: Obtener un producto
+      operationId: obtenerProducto
+      security: []
+      responses:
+        '200':
+          description: Producto
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Producto'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: [Productos]
+      summary: Actualizar precio, stock o datos (staff/admin)
+      operationId: actualizarProducto
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductoCreate'
+      responses:
+        '200':
+          description: Producto actualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Producto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [Productos]
+      summary: Retirar un producto del catálogo (admin)
+      operationId: eliminarProducto
+      security:
+        - bearerAuth: []
+      responses:
+        '204':
+          description: Producto eliminado
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /carrito:
+    get:
+      tags: [Carrito]
+      summary: Ver el carrito del usuario autenticado
+      description: >
+        Consulta GET /usuarios/{usuarioId}/socio de Usuarios con la identidad del
+        JWT y calcula el descuento solo si el socio está activo. El total se
+        revalida al pagar; si Usuarios no está disponible, devuelve 503.
+      operationId: obtenerCarrito
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Carrito con totales y descuento de socio aplicado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Carrito'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: El usuario no existe en Usuarios
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: Usuarios no está disponible para calcular el descuento
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      tags: [Carrito]
+      summary: Vaciar el carrito
+      operationId: vaciarCarrito
+      security:
+        - bearerAuth: []
+      responses:
+        '204':
+          description: Carrito vaciado
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /carrito/items:
+    post:
+      tags: [Carrito]
+      summary: Añadir un producto al carrito
+      description: >
+        Opera sobre el carrito del usuario autenticado; comprueba talla y stock.
+        Los totales se calculan consultando el estado de socio en Usuarios, igual
+        que GET /carrito. Modificar el carrito no reserva stock.
+      operationId: anadirAlCarrito
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ItemCarritoCreate'
+      responses:
+        '201':
+          description: Carrito actualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Carrito'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: El producto no existe en Compras o el usuario no existe en Usuarios.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: No hay stock suficiente de esa talla
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: Usuarios no está disponible para calcular el descuento
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /carrito/items/{itemId}:
+    parameters:
+      - name: itemId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    put:
+      tags: [Carrito]
+      summary: Cambiar la cantidad de un elemento del carrito
+      description: >
+        Opera sobre el carrito del usuario autenticado; comprueba talla y stock.
+        Los totales se calculan consultando el estado de socio en Usuarios, igual
+        que GET /carrito. Modificar el carrito no reserva stock.
+      operationId: actualizarItemCarrito
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [cantidad]
+              properties:
+                cantidad:
+                  type: integer
+                  minimum: 1
+      responses:
+        '200':
+          description: Carrito actualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Carrito'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: No hay stock suficiente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: Usuarios no está disponible para calcular el descuento
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      tags: [Carrito]
+      summary: Quitar un elemento del carrito
+      operationId: quitarDelCarrito
+      security:
+        - bearerAuth: []
+      responses:
+        '204':
+          description: Elemento eliminado
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /pedidos:
+    post:
+      tags: [Pedidos]
+      summary: Confirmar el carrito y pagar el pedido
+      description: >
+        Descuenta el stock y procesa el pago con la pasarela compartida con
+        Entradas.
+
+        Antes de calcular el total, este servicio consulta al microservicio
+        Usuarios mediante GET /usuarios/{usuarioId}/socio para saber si debe
+        aplicarse el descuento de socio. Se trata de una COMUNICACIÓN
+        SÍNCRONA de tipo CONSULTA:
+
+        Compras -> Usuarios -> GET /usuarios/{usuarioId}/socio
+
+        Tras el pago, se publica en el Message Broker el evento asíncrono
+        "pedido creado", que consume Usuarios para añadir la actividad al
+        historial del comprador.
+
+        Revalida cantidades, tallas, stock y descuento; el carrito es del usuario
+        autenticado. Idempotency-Key identifica la compra y se asocia a un pedido
+        y referencia de cobro estables, según el apartado 3.6 de la memoria.
+        Repetir la clave con el mismo cuerpo recupera el pedido y 201 tras el éxito,
+        sin cobrar ni descontar stock otra vez; otra carga o pago en curso devuelve
+        409. El pedido conserva los items del primer intento, aunque cambie el
+        carrito. Un pago incierto se consulta antes de repetir el cobro; si sigue
+        sin resolverse, devuelve 503 y se concilia. El evento de pedido pagado se
+        publica con los datos y reintentos del apartado 3.4.
+      operationId: crearPedido
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          description: Clave única por compra y usuario; reutilizarla en los reintentos.
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 100
+          example: compra-2026-0001
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PedidoCreate'
+            example: {"direccionEnvio": "Calle Mayor 12, 10260 Madroñera", "metodoPago": "tarjeta"}
+      responses:
+        '201':
+          description: Pedido creado
+          headers:
+            Location:
+              description: URL del pedido
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pedido'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '402':
+          description: El pago ha sido rechazado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: >
+            El usuario indicado no existe, según la consulta realizada a
+            Usuarios.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Carrito vacío, falta de stock, pago en curso o clave reutilizada con otros datos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: >
+            No se ha podido comprobar el estado de socio del comprador porque
+            el microservicio Usuarios no está disponible, o el resultado del
+            pago está pendiente de conciliación.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    get:
+      tags: [Pedidos]
+      summary: Listar pedidos (los propios, o cualquiera si eres staff/admin)
+      operationId: listarPedidos
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: usuarioId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: estado
+          in: query
+          schema:
+            $ref: '#/components/schemas/EstadoPedido'
+      responses:
+        '200':
+          description: Listado de pedidos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Pedido'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /pedidos/{pedidoId}:
+    parameters:
+      - $ref: '#/components/parameters/PedidoId'
+    get:
+      tags: [Pedidos]
+      summary: Obtener un pedido
+      description: >
+        Solo el propietario o staff/admin pueden consultar el pedido.
+      operationId: obtenerPedido
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Pedido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pedido'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [Pedidos]
+      summary: Cancelar un pedido aún no enviado
+      description: >
+        Solo el propietario o staff/admin, antes del envío y sin un pago en curso.
+        Repone el stock una sola vez y solicita el reembolso si hubo cobro, según
+        el apartado 3.6. Los fallos de devolución quedan pendientes de conciliación;
+        204 confirma la cancelación, no el abono bancario. Repetirla devuelve 204.
+      operationId: cancelarPedido
+      security:
+        - bearerAuth: []
+      responses:
+        '204':
+          description: Pedido cancelado y stock repuesto
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: El pedido ya fue enviado o entregado, o tiene un pago en curso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /pedidos/{pedidoId}/estado:
+    parameters:
+      - $ref: '#/components/parameters/PedidoId'
+    put:
+      tags: [Pedidos]
+      summary: Cambiar el estado de un pedido (staff/admin)
+      description: >
+        Solo staff/admin. Permite pagado -> preparando -> enviado -> entregado,
+        o repetir el estado actual. pendiente -> pagado lo realiza el proceso de
+        pago; para cancelar se usa DELETE /pedidos/{pedidoId}. Otras transiciones
+        devuelven 409; este endpoint no ejecuta cobros ni reembolsos.
+      operationId: cambiarEstadoPedido
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [estado]
+              properties:
+                estado:
+                  $ref: '#/components/schemas/EstadoPedido'
+      responses:
+        '200':
+          description: Estado actualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pedido'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Transición de estado no permitida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Token JWT con expiración, validado por el API Gateway.
+
+  parameters:
+    ProductoId:
+      name: productoId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    PedidoId:
+      name: pedidoId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  responses:
+    BadRequest:
+      description: Petición mal formada o datos no válidos
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: Token ausente, inválido o caducado
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Forbidden:
+      description: El rol del usuario no tiene permisos para esta operación
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Recurso no encontrado
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  schemas:
+    Error:
+      type: object
+      required: [codigo, mensaje]
+      properties:
+        codigo:
+          type: integer
+          example: 404
+        mensaje:
+          type: string
+          example: Recurso no encontrado
+        detalles:
+          type: array
+          items:
+            type: string
+
+    EstadoPedido:
+      type: string
+      enum: [pendiente, pagado, preparando, enviado, entregado, cancelado]
+
+    MetodoPago:
+      type: string
+      enum: [tarjeta, bizum, paypal]
+
+    StockTalla:
+      type: object
+      required: [talla, unidades]
+      properties:
+        talla:
+          type: string
+          example: M
+        unidades:
+          type: integer
+          minimum: 0
+
+    Producto:
+      type: object
+      required: [productoId, nombre, precio, categoria]
+      properties:
+        productoId:
+          type: string
+          format: uuid
+        nombre:
+          type: string
+          example: Camiseta oficial 2026-2027
+        descripcion:
+          type: string
+        categoria:
+          type: string
+          enum: [camiseta, bufanda, gorra, accesorio, otro]
+        precio:
+          type: number
+          format: float
+          minimum: 0
+          example: 39.95
+        stock:
+          type: array
+          description: Una entrada por talla; usar unica en productos sin tallas. Sin stock no se vende.
+          items:
+            $ref: '#/components/schemas/StockTalla'
+        fotos:
+          type: array
+          items:
+            type: string
+            format: uri
+        jugadorId:
+          type: string
+          format: uuid
+          description: Referencia a un jugador de Deportivo, sin llamada síncrona desde Compras
+        patrocinadorId:
+          type: string
+          format: uuid
+          description: Patrocinador del producto (ver API Institucional)
+
+    ProductoCreate:
+      type: object
+      required: [nombre, precio, categoria]
+      properties:
+        nombre:
+          type: string
+        descripcion:
+          type: string
+        categoria:
+          type: string
+          enum: [camiseta, bufanda, gorra, accesorio, otro]
+        precio:
+          type: number
+          format: float
+          minimum: 0
+        stock:
+          type: array
+          description: Una entrada por talla; usar unica en productos sin tallas. Sin stock no se vende.
+          items:
+            $ref: '#/components/schemas/StockTalla'
+        fotos:
+          type: array
+          items:
+            type: string
+            format: uri
+        jugadorId:
+          type: string
+          format: uuid
+          description: Referencia a un jugador de Deportivo.
+        patrocinadorId:
+          type: string
+          format: uuid
+          description: Referencia a un patrocinador de Institucional.
+
+    ItemCarritoCreate:
+      type: object
+      required: [productoId, talla, cantidad]
+      properties:
+        productoId:
+          type: string
+          format: uuid
+        talla:
+          type: string
+          minLength: 1
+          description: Debe existir en el stock del producto; usar unica si no tiene tallas.
+          example: M
+        cantidad:
+          type: integer
+          minimum: 1
+          default: 1
+
+    ItemCarrito:
+      type: object
+      required: [itemId, productoId, cantidad, precioUnitario]
+      properties:
+        itemId:
+          type: string
+          format: uuid
+        productoId:
+          type: string
+          format: uuid
+        nombre:
+          type: string
+        talla:
+          type: string
+        cantidad:
+          type: integer
+        precioUnitario:
+          type: number
+          format: float
+
+    Carrito:
+      type: object
+      required: [usuarioId, items, total]
+      properties:
+        usuarioId:
+          type: string
+          format: uuid
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ItemCarrito'
+        subtotal:
+          type: number
+          format: float
+        descuentoSocio:
+          type: number
+          format: float
+          description: Importe descontado por ser socio
+        total:
+          type: number
+          format: float
+
+    PedidoCreate:
+      type: object
+      required: [direccionEnvio, metodoPago]
+      properties:
+        direccionEnvio:
+          type: string
+          example: Calle Mayor 12, 10260 Madroñera
+        metodoPago:
+          $ref: '#/components/schemas/MetodoPago'
+
+    Pedido:
+      type: object
+      required: [pedidoId, usuarioId, items, total, estado, direccionEnvio]
+      properties:
+        pedidoId:
+          type: string
+          format: uuid
+        usuarioId:
+          type: string
+          format: uuid
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ItemCarrito'
+        total:
+          type: number
+          format: float
+        descuentoSocio:
+          type: number
+          format: float
+        direccionEnvio:
+          type: string
+        metodoPago:
+          $ref: '#/components/schemas/MetodoPago'
+        estado:
+          $ref: '#/components/schemas/EstadoPedido'
+        fechaPedido:
+          type: string
+          format: date-time
