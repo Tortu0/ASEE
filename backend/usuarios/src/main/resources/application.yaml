@@ -1,3 +1,20 @@
 spring:
   application:
     name: usuarios
+
+  # 1. COORDENADAS DE LA BASE DE DATOS
+  datasource:
+    url: jdbc:postgresql://localhost:5432/usuarios_db
+    username: postgres
+    password: password
+    driver-class-name: org.postgresql.Driver
+
+  # 2. CONFIGURACIÓN DE JPA / HIBERNATE
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+    hibernate:
+      ddl-auto: none
