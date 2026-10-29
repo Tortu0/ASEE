@@ -66,7 +66,33 @@ Una vez validada la conexión a la base de datos, el servicio puede inicializars
 
 ```bash
 mvn spring-boot:run
-
 ```
 
 El servidor embebido Tomcat arrancará por defecto en el puerto `8081` (o el especificado en `application.yml`).
+
+---
+
+## 📊 Modelo de Datos (Esquema Relacional)
+
+La base de datos PostgreSQL está diseñada siguiendo el principio de aislamiento de microservicios, normalizando la información de identidad y manteniendo referencias débiles hacia dominios externos. Se compone de tres tablas principales:
+
+### 1. Tabla `usuarios`
+Es el núcleo de identidad del sistema. Almacena la información personal, las credenciales de acceso y determina los permisos de cada individuo dentro de la plataforma.
+* **`id` (UUID):** Clave primaria. Se utiliza UUID en lugar de identificadores secuenciales enteros para garantizar que el ID sea único a nivel global y evitar colisiones cuando los microservicios intercambien información.
+* **`email` (UNIQUE):** Actúa como identificador natural (nombre de usuario) para el proceso de *login*, garantizando que no existan cuentas duplicadas.
+* **`password`:** Almacena la contraseña del usuario. Por seguridad, nunca se guarda en texto plano, sino que se encriptará utilizando el algoritmo Argon2id (hash + salt).
+* **`rol`:** Define el nivel de acceso (RBAC). Los valores permitidos son `visitante`, `socio`, `staff` y `admin`. El API Gateway utilizará este campo incrustado en el token JWT para autorizar o denegar peticiones.
+
+### 2. Tabla `socios`
+Gestiona la información de las suscripciones. Se ha diseñado como una tabla separada (relación 1 a 1) en lugar de incluir estas columnas en la tabla `usuarios` para cumplir con el Principio de Responsabilidad Única y evitar que los usuarios base (rol `visitante`) tengan multitud de columnas vacías (nulas).
+* **`usuario_id` (UUID - PK & FK):** Es a la vez su identificador y la clave foránea que lo vincula al usuario. Implementa la regla `ON DELETE CASCADE`: si el club da de baja y borra a un usuario, su registro de socio se destruye automáticamente, manteniendo la base de datos limpia.
+* **`numero_socio` (UNIQUE):** Identificador comercial amigable (ej. S-000123) para la gestión física e institucional.
+* **`estado` y `tipo_cuota`:** Controlan la validez de la suscripción (`activo`, `caducado`) y la periodicidad del cobro.
+* **`descuento_porcentaje`:** Valor numérico que los microservicios de *Entradas* y *Compras* consultarán de forma síncrona vía REST para aplicar rebajas en el carrito.
+
+### 3. Tabla `actividades`
+Actúa como un registro histórico (log) de las interacciones económicas del usuario con el club. Esta tabla se alimenta de forma asíncrona escuchando eventos en RabbitMQ (ej. "entrada comprada", "pedido creado").
+* **`usuario_id` (UUID - FK):** Vincula la actividad con el perfil del comprador (relación 1 a N).
+* **`tipo`:** Clasifica la actividad (`entrada` o `pedido`).
+* **`referencia_id` (UUID):** Esta es una decisión arquitectónica clave. Almacena el ID de la compra, pero **no** es una clave foránea (`FOREIGN KEY`) a nivel de base de datos. Dado que las entradas y pedidos reales se almacenan en bases de datos MongoDB (aisladas en otros microservicios), PostgreSQL no puede validar su existencia directamente. Actúa como un "puntero lógico" externo.
+* **`importe` y `fecha`:** Datos consolidados en el momento de la transacción para mantener un registro inmutable en el perfil del usuario, independientemente de si el precio del producto cambia en el futuro en la tienda.
