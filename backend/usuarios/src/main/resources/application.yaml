@@ -23,3 +23,8 @@ spring:
         format_sql: true
     hibernate:
       ddl-auto: none
+
+jwt:
+  # Spring buscará la variable de entorno JWT_SECRET.
+  secret: ${JWT_SECRET}
+  expiration: 3600

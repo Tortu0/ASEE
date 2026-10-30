@@ -60,4 +60,44 @@ public class UsuarioController {
             return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
         }
     }
+
+    @GetMapping("/{usuarioId}")
+    public ResponseEntity<?> obtenerUsuario(
+            @PathVariable java.util.UUID usuarioId,
+            @RequestHeader("X-User-Id") java.util.UUID headerUserId,
+            @RequestHeader("X-User-Role") String headerUserRole) {
+
+        // 1. REGLA DE SEGURIDAD (Autorización)
+        // El YAML dice: "Un usuario solo puede ver su propio perfil; staff y admin pueden ver cualquiera."
+        boolean esAdminOStaff = headerUserRole.equals("admin") || headerUserRole.equals("staff");
+        boolean esMismoUsuario = headerUserId.equals(usuarioId);
+
+        if (!esAdminOStaff && !esMismoUsuario) {
+            ErrorDTO error = new ErrorDTO(403, "No tienes permisos para ver el perfil de otro usuario");
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
+        }
+
+        // 2. BUSCAR EL RECURSO EN BASE DE DATOS
+        java.util.Optional<Usuario> usuarioOpt = usuarioService.obtenerUsuario(usuarioId);
+
+        if (usuarioOpt.isEmpty()) {
+            ErrorDTO error = new ErrorDTO(404, "No existe ningún usuario con el identificador indicado");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
+        }
+
+        Usuario usuario = usuarioOpt.get();
+
+        // 3. MAPEAR AL DTO DE RESPUESTA (Ocultar contraseña)
+        UsuarioResponseDTO response = new UsuarioResponseDTO();
+        response.setUsuarioId(usuario.getId());
+        response.setNombre(usuario.getNombre());
+        response.setEmail(usuario.getEmail());
+        response.setTelefono(usuario.getTelefono());
+        response.setDireccion(usuario.getDireccion());
+        response.setRol(usuario.getRol());
+        response.setFechaAlta(usuario.getFechaAlta());
+
+        // 4. DEVOLVER EL PERFIL CON CÓDIGO 200 OK
+        return ResponseEntity.ok(response);
+    }
 }
