@@ -42,7 +42,7 @@ public class UsuarioController {
             response.setEmail(usuarioGuardado.getEmail());
             response.setTelefono(usuarioGuardado.getTelefono());
             response.setDireccion(usuarioGuardado.getDireccion());
-            response.setRol(usuarioGuardado.getRol());
+            response.setRol(usuarioGuardado.getRol().name());
             response.setFechaAlta(usuarioGuardado.getFechaAlta());
 
             // 3. El YAML exige devolver un 201 Created y una cabecera 'Location' con la URL del nuevo recurso
@@ -94,10 +94,111 @@ public class UsuarioController {
         response.setEmail(usuario.getEmail());
         response.setTelefono(usuario.getTelefono());
         response.setDireccion(usuario.getDireccion());
-        response.setRol(usuario.getRol());
+        response.setRol(usuario.getRol().name());
         response.setFechaAlta(usuario.getFechaAlta());
 
         // 4. DEVOLVER EL PERFIL CON CÓDIGO 200 OK
         return ResponseEntity.ok(response);
+    }
+
+    @PutMapping("/{usuarioId}")
+    public ResponseEntity<?> actualizarUsuario(
+            @PathVariable java.util.UUID usuarioId,
+            @RequestBody com.asee.usuarios.dto.UsuarioUpdateDTO dto,
+            @RequestHeader("X-User-Id") java.util.UUID headerUserId,
+            @RequestHeader("X-User-Role") String headerUserRole) {
+
+        // 1. REGLA DE SEGURIDAD: Solo el propio usuario o admin
+        boolean esAdmin = headerUserRole.equals("admin");
+        boolean esMismoUsuario = headerUserId.equals(usuarioId);
+
+        if (!esAdmin && !esMismoUsuario) {
+            ErrorDTO error = new ErrorDTO(403, "No tienes permisos para modificar este perfil");
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
+        }
+
+        // 2. REGLA DE NEGOCIO: Rechazar cuerpo vacío
+        if (dto.isVacio()) {
+            ErrorDTO error = new ErrorDTO(400, "El cuerpo de la petición no puede estar vacío");
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+        }
+
+        try {
+            // 3. ACTUALIZAR Y GUARDAR
+            Usuario usuarioActualizado = usuarioService.actualizarUsuario(usuarioId, dto);
+
+            // 4. MAPEAR AL DTO DE SALIDA
+            UsuarioResponseDTO response = new UsuarioResponseDTO();
+            response.setUsuarioId(usuarioActualizado.getId());
+            response.setNombre(usuarioActualizado.getNombre());
+            response.setEmail(usuarioActualizado.getEmail());
+            response.setTelefono(usuarioActualizado.getTelefono());
+            response.setDireccion(usuarioActualizado.getDireccion());
+            response.setRol(usuarioActualizado.getRol().name());
+            response.setFechaAlta(usuarioActualizado.getFechaAlta());
+
+            return ResponseEntity.ok(response);
+
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ErrorDTO(404, e.getMessage()));
+        }
+    }
+
+    @DeleteMapping("/{usuarioId}")
+    public ResponseEntity<?> eliminarUsuario(
+            @PathVariable java.util.UUID usuarioId,
+            @RequestHeader("X-User-Role") String headerUserRole) {
+
+        // REGLA: Solo admin puede borrar
+        if (!headerUserRole.equals("admin")) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(new ErrorDTO(403, "Solo los administradores pueden eliminar usuarios"));
+        }
+
+        try {
+            usuarioService.eliminarUsuario(usuarioId);
+            // El YAML exige un 204 No Content para borrados exitosos (sin cuerpo de respuesta)
+            return ResponseEntity.noContent().build();
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ErrorDTO(404, e.getMessage()));
+        }
+    }
+
+    @PutMapping("/{usuarioId}/rol")
+    public ResponseEntity<?> cambiarRol(
+            @PathVariable java.util.UUID usuarioId,
+            @RequestBody com.asee.usuarios.dto.RolUpdateDTO dto,
+            @RequestHeader("X-User-Role") String headerUserRole) {
+
+        // REGLA: Solo admin puede cambiar roles
+        if (!headerUserRole.equals("admin")) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(new ErrorDTO(403, "Solo los administradores pueden cambiar roles"));
+        }
+
+        if (dto.getRol() == null) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ErrorDTO(400, "El campo 'rol' es obligatorio"));
+        }
+
+        try {
+            Usuario usuarioActualizado = usuarioService.cambiarRol(usuarioId, dto.getRol());
+
+            UsuarioResponseDTO response = new UsuarioResponseDTO();
+            response.setUsuarioId(usuarioActualizado.getId());
+            response.setNombre(usuarioActualizado.getNombre());
+            response.setEmail(usuarioActualizado.getEmail());
+            response.setTelefono(usuarioActualizado.getTelefono());
+            response.setDireccion(usuarioActualizado.getDireccion());
+            response.setRol(usuarioActualizado.getRol().name());
+            response.setFechaAlta(usuarioActualizado.getFechaAlta());
+
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ErrorDTO(404, e.getMessage()));
+        }
     }
 }

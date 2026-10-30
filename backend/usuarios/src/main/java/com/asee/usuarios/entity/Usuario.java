@@ -26,8 +26,10 @@ public class Usuario {
 
     private String direccion;
 
+    // Le indicamos a JPA que guarde el texto del Enum ("visitante"), no su número de orden (0)
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    private String rol;
+    private Rol rol;
 
     @Column(name = "fecha_alta", nullable = false, updatable = false)
     private LocalDateTime fechaAlta;
@@ -37,7 +39,7 @@ public class Usuario {
     }
 
     // Constructor para inicializar los datos fácilmente desde nuestro código
-    public Usuario(String nombre, String email, String password, String rol) {
+    public Usuario(String nombre, String email, String password, Rol rol) {
         this.nombre = nombre;
         this.email = email;
         this.password = password;
@@ -100,11 +102,11 @@ public class Usuario {
         this.direccion = direccion;
     }
 
-    public String getRol() {
+    public Rol getRol() {
         return rol;
     }
 
-    public void setRol(String rol) {
+    public void setRol(Rol rol) {
         this.rol = rol;
     }
 

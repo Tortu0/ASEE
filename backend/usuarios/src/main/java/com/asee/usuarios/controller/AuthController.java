@@ -61,7 +61,7 @@ public class AuthController {
         usuarioResponse.setEmail(usuario.getEmail());
         usuarioResponse.setTelefono(usuario.getTelefono());
         usuarioResponse.setDireccion(usuario.getDireccion());
-        usuarioResponse.setRol(usuario.getRol());
+        usuarioResponse.setRol(usuario.getRol().name());
         usuarioResponse.setFechaAlta(usuario.getFechaAlta());
 
         // 5. Construir la respuesta final tal y como exige el YAML
