@@ -1,0 +1,30 @@
+info:
+  name: 03 - Consultar Perfil (GET)
+  type: http
+  seq: 3
+
+http:
+  method: GET
+  url: "{{base_url}}/usuarios/{{test_user_id}}"
+  headers:
+    - name: X-User-Id
+      value: "{{test_user_id}}"
+    - name: X-User-Role
+      value: visitante
+  auth: inherit
+
+runtime:
+  assertions:
+    - expression: res.status
+      operator: eq
+      value: "200"
+    - expression: res.body.rol
+      operator: eq
+      value: visitante
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false

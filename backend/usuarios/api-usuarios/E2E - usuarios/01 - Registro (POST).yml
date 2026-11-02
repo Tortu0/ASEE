@@ -1,0 +1,31 @@
+info:
+  name: 01 - Registro (POST)
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{base_url}}/usuarios"
+  body:
+    type: json
+    data: |-
+      {
+        "nombre": "Usuario Test E2E",
+        "email": "test.e2e@correo.com",
+        "password": "Password123!",
+        "telefono": "+34600000000"
+      }
+  auth: inherit
+
+runtime:
+  assertions:
+    - expression: res.status
+      operator: eq
+      value: "201"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
