@@ -1,0 +1,20 @@
+spring:
+  application:
+    name: institucional
+  mongodb:
+    uri: ${MONGODB_URI:mongodb://localhost:27017}
+    database: institucional
+    representation:
+      uuid: standard
+
+server:
+  port: 8086
+  servlet:
+    context-path: /v1
+
+app:
+  # Carga historia, identidad, junta, palmarés, etc. de ejemplo si las colecciones están vacías.
+  # Ponlo a false (DATOS_EJEMPLO=false) en entornos reales.
+  datos-ejemplo: ${DATOS_EJEMPLO:true}
+  # CORS para que el frontend pueda llamar directamente en desarrollo. Con el API Gateway no hace falta.
+  cors-dev: ${CORS_DEV:true}
