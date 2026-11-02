@@ -1,0 +1,52 @@
+version: '3.9'
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Infraestructura local para el microservicio de Entradas
+# Levanta: MongoDB, RabbitMQ (con management UI)
+#
+# Uso:
+#   docker-compose up -d
+#   (luego arranca el microservicio con: cd backend/entradas && ./mvnw spring-boot:run)
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+
+  # ── MongoDB ──────────────────────────────────────────────────────────────
+  mongodb:
+    image: mongo:7
+    container_name: entradas-mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_DATABASE: entradas
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── RabbitMQ ─────────────────────────────────────────────────────────────
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: entradas-rabbit
+    restart: unless-stopped
+    ports:
+      - "5672:5672"    # AMQP
+      - "15672:15672"  # Management UI (guest/guest)
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    volumes:
+      - rabbit-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  mongo-data:
+  rabbit-data:

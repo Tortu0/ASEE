@@ -1,3 +1,67 @@
+server:
+  port: 8083
+  servlet:
+    context-path: /v1          # coincide con http://localhost:8083/v1
+
 spring:
   application:
     name: entradas
+  data:
+    mongodb:
+      uri: ${MONGODB_URI:mongodb://localhost:27017/entradas}   # Atlas M0 en la nube
+      # Necesario para que se creen los índices únicos de @CompoundIndex (p. ej. entradas: reserva+asiento)
+      auto-index-creation: true
+  rabbitmq:
+    host: ${RABBIT_HOST:localhost}
+    port: 5672
+    username: ${RABBIT_USER:guest}
+    password: ${RABBIT_PASS:guest}
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    # Si RabbitMQ está caído, que la compra no se quede esperando 60 s: falla pronto y el evento se reintenta
+    connection-timeout: 3s
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+
+  # JWT: validación local (segunda defensa tras el API Gateway)
+  # En desarrollo se puede desactivar poniendo spring.security.oauth2.resourceserver.jwt.jwk-set-uri=false
+  # o usando un JWK URI del API Gateway / Keycloak.
+  # Para simplificar en desarrollo, se configura un issuer-uri que puede apuntar a localhost.
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${JWT_ISSUER_URI:http://localhost:8080/realms/club}
+
+clientes:
+  deportivo.url: ${DEPORTIVO_URL:http://localhost:8082/v1}
+  usuarios.url:  ${USUARIOS_URL:http://localhost:8081/v1}
+
+entradas:
+  reserva-ttl-minutes: 10
+  rabbit:
+    exchange: club.exchange
+    routing-key: entrada.comprada
+  carga:                         # "carga de configuración" por partido
+    # Mismos UUID que los partidos de ejemplo de Deportivo con venta abierta (jornadas 4 y 7)
+    - partido-id: 20000000-0000-0000-0000-000000000004
+      zonas:
+        - { nombre: A, filas: 10, asientos-por-fila: 30 }
+        - { nombre: B, filas: 10, asientos-por-fila: 30 }
+      precios:
+        A: { general: 8.5, socio: 6.0, vip: 20.0 }
+        B: { general: 6.5, socio: 4.5, vip: 15.0 }
+    - partido-id: 20000000-0000-0000-0000-000000000007
+      zonas:
+        - { nombre: A, filas: 10, asientos-por-fila: 30 }
+        - { nombre: B, filas: 10, asientos-por-fila: 30 }
+      precios:
+        A: { general: 8.5, socio: 6.0, vip: 20.0 }
+        B: { general: 6.5, socio: 4.5, vip: 15.0 }
+
+logging:
+  level:
+    com.asee.entradas: DEBUG
+    org.springframework.amqp: INFO
+    org.springframework.data.mongodb: INFO
