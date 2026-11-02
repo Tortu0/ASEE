@@ -5,6 +5,7 @@ import com.asee.usuarios.repository.UsuarioRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import com.asee.usuarios.entity.Rol;
+import com.asee.usuarios.dto.UsuarioCreateDTO;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -21,26 +22,26 @@ public class UsuarioService {
         this.passwordEncoder = passwordEncoder;
     }
 
-    public Usuario registrarUsuario(String nombre, String email, String passwordPlana, String telefono, String direccion) {
+    public Usuario registrarUsuario(UsuarioCreateDTO dto) {
         // 1. Regla de negocio: Comprobar si el email ya existe para evitar duplicados
-        if (usuarioRepository.existsByEmail(email)) {
+        if (usuarioRepository.existsByEmail(dto.getEmail())) {
             throw new IllegalArgumentException("El email ya está registrado");
         }
 
-        // 2. Crear la entidad
+        // 2. Crear la entidad extrayendo los datos del DTO
         Usuario nuevoUsuario = new Usuario();
-        nuevoUsuario.setNombre(nombre);
-        nuevoUsuario.setEmail(email);
-        nuevoUsuario.setTelefono(telefono);
-        nuevoUsuario.setDireccion(direccion);
+        nuevoUsuario.setNombre(dto.getNombre());
+        nuevoUsuario.setEmail(dto.getEmail());
+        nuevoUsuario.setTelefono(dto.getTelefono());
+        nuevoUsuario.setDireccion(dto.getDireccion());
 
-        // 3. Regla de negocio: Encriptar la contraseña (Hash + Salt automático con Argon2id)
-        nuevoUsuario.setPassword(passwordEncoder.encode(passwordPlana));
+        // 3. Regla de negocio: Encriptar la contraseña
+        nuevoUsuario.setPassword(passwordEncoder.encode(dto.getPassword()));
 
-        // 4. Regla de negocio: Rol "visitante" por defecto según especificación
+        // 4. Regla de negocio: Rol "visitante" por defecto
         nuevoUsuario.setRol(Rol.visitante);
 
-        // 5. Persistir en la base de datos PostgreSQL
+        // 5. Persistir en la base de datos
         return usuarioRepository.save(nuevoUsuario);
     }
 

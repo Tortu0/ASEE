@@ -26,16 +26,10 @@ public class UsuarioController {
     @PostMapping
     public ResponseEntity<?> registrarUsuario(@RequestBody UsuarioCreateDTO dto) {
         try {
-            // 1. Pasamos los datos del DTO al Servicio para que aplique la lógica y guarde en base de datos
-            Usuario usuarioGuardado = usuarioService.registrarUsuario(
-                    dto.getNombre(),
-                    dto.getEmail(),
-                    dto.getPassword(),
-                    dto.getTelefono(),
-                    dto.getDireccion()
-            );
+            // 1. Pasamos el DTO completo al Servicio directamente
+            Usuario usuarioGuardado = usuarioService.registrarUsuario(dto);
 
-            // 2. Mapeamos la Entidad resultante al DTO de respuesta (ocultando el password)
+            // 2. Mapeamos la Entidad resultante al DTO de respuesta
             UsuarioResponseDTO response = new UsuarioResponseDTO();
             response.setUsuarioId(usuarioGuardado.getId());
             response.setNombre(usuarioGuardado.getNombre());
@@ -45,8 +39,8 @@ public class UsuarioController {
             response.setRol(usuarioGuardado.getRol().name());
             response.setFechaAlta(usuarioGuardado.getFechaAlta());
 
-            // 3. El YAML exige devolver un 201 Created y una cabecera 'Location' con la URL del nuevo recurso
-            URI location = ServletUriComponentsBuilder.fromCurrentRequest()
+            // 3. El YAML exige devolver un 201 Created y una cabecera 'Location'
+            java.net.URI location = org.springframework.web.servlet.support.ServletUriComponentsBuilder.fromCurrentRequest()
                     .path("/{id}")
                     .buildAndExpand(usuarioGuardado.getId())
                     .toUri();
@@ -54,8 +48,6 @@ public class UsuarioController {
             return ResponseEntity.created(location).body(response);
 
         } catch (IllegalArgumentException e) {
-            // Si el servicio detecta que el email ya existe, lanza esta excepción.
-            // La atrapamos y devolvemos el Error 409 Conflict que pide el YAML.
             ErrorDTO error = new ErrorDTO(409, e.getMessage());
             return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
         }
