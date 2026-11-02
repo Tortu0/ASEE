@@ -24,6 +24,13 @@ spring:
     hibernate:
       ddl-auto: none
 
+  # CONFIGURACIÓN RABBITMQ
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: admin
+    password: admin123
+
 jwt:
   # Spring buscará la variable de entorno JWT_SECRET.
   secret: ${JWT_SECRET}

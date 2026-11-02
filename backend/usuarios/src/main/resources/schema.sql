@@ -27,11 +27,10 @@ CREATE TABLE IF NOT EXISTS socios (
 -- 3. TABLA HISTORIAL DE ACTIVIDADES
 -- Corresponde al esquema 'Actividad'. Relación 1 a N (Un usuario, muchas compras/entradas).
 CREATE TABLE IF NOT EXISTS actividades (
-                                           id SERIAL PRIMARY KEY,          -- SERIAL es auto-incremental en PostgreSQL
-                                           usuario_id UUID NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
-    tipo VARCHAR(20) NOT NULL,      -- Valores permitidos: entrada, pedido
-    referencia_id UUID NOT NULL,    -- El ID de la compra en el microservicio de Compras o Entradas
-    descripcion TEXT,
-    importe NUMERIC(10,2),
-    fecha TIMESTAMP NOT NULL
+                                           id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    usuario_id UUID NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+    tipo VARCHAR(50) NOT NULL,
+    referencia_id VARCHAR(100) NOT NULL,
+    fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT unique_actividad UNIQUE (usuario_id, tipo, referencia_id)
     );
