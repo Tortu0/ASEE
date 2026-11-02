@@ -1,98 +1,119 @@
+# 🛡️ Microservicio de Usuarios, Identidad y Accesos
 
-# Microservicio de Usuarios, Identidad y Accesos
-
-Este componente centraliza la gestión de la identidad, el control de accesos basados en roles (RBAC) y la autenticación mediante tokens JWT. Se encarga de la validación de credenciales (usando hash Argon2id) y mantiene la integridad del estado de socio y el historial de compras y reservas de los usuarios.
+Este componente centraliza la gestión de la identidad, el control de accesos basados en roles (RBAC) y la autenticación mediante tokens JWT. Se encarga de la validación de credenciales (usando hash Argon2id), mantiene la integridad del estado de socio y registra el historial de actividades (sincronizado de forma asíncrona mediante RabbitMQ).
 
 ## ⚙️ Stack Tecnológico
-* **Lenguaje:** Java 17 / 21
-* **Framework:** Spring Boot 3.x (Spring Web, Spring Data JPA, Spring Security)
-* **Base de Datos:** PostgreSQL 15
-* **Infraestructura Local:** Docker Compose V2
+- **Lenguaje:** Java 21
+- **Framework:** Spring Boot 3.3.5 (Spring Web, Spring Data JPA, Spring Security, Spring AMQP)
+- **Base de Datos:** PostgreSQL 15
+- **Mensajería:** RabbitMQ 3
+- **Seguridad:** JJWT (Java JWT) & BouncyCastle (Argon2id)
+- **Testing:** JUnit 5, Mockito, Testcontainers & MockMvc
+- **Infraestructura Local:** Docker Compose V2
 
 ---
 
 ## 🛠️ Requisitos del Entorno de Desarrollo
 
 Para la correcta ejecución e integración de este servicio en el entorno local, es necesario disponer de:
-* Java Development Kit (JDK) 17 o superior.
-* Maven 3.x.
-* Docker Engine y Docker Compose V2.
-* Entorno de desarrollo recomendado: **IntelliJ IDEA Ultimate** (por su integración nativa con Spring y herramientas de bases de datos).
+- Java Development Kit (JDK) 21.
+- Maven 3.x.
+- Docker Engine y Docker Compose V2 (indispensables para infraestructura y Testcontainers).
+- Entorno de desarrollo recomendado: **IntelliJ IDEA Ultimate** (por su integración nativa con Spring y base de datos).
 
 ---
 
-## 🐳 Despliegue de la Infraestructura (Base de Datos)
+## 🔐 Configuración del Entorno (.env)
 
-La capa de persistencia está contenerizada para garantizar la paridad entre entornos y aislar las dependencias del sistema operativo base.
+El microservicio utiliza una clave secreta para firmar y validar los tokens JWT. Por motivos de seguridad, esta clave no está en el código fuente. 
+
+Debes crear un archivo oculto llamado `.env` en la raíz del microservicio (al mismo nivel que `pom.xml`) con el siguiente contenido:
+
+```env
+# Clave secreta para firmar los tokens JWT (Longitud mínima de 32 caracteres / 256 bits codificada en Base64)
+JWT_SECRET=tu_clave_secreta_aqui
+
+```
+
+*Nota: Tienes un archivo `.env.example` en el repositorio que sirve de plantilla para configurar esto.*
+
+---
+
+## 🐳 Despliegue de la Infraestructura
+
+La capa de persistencia (PostgreSQL) y el bus de eventos (RabbitMQ) están contenerizados para garantizar un entorno determinista.
 
 1. Navegar al directorio raíz del proyecto (donde se ubica el archivo `docker-compose.yml`).
-2. Levantar el contenedor de PostgreSQL en segundo plano ejecutando:
-   ```bash
-   docker compose up -d
+2. Levantar los contenedores en segundo plano ejecutando:
+```bash
+docker compose up -d
 
-3. Verificar que el contenedor `db_usuarios` se encuentra en estado `Up` expuesto en el puerto `5432`:
-    ```bash
-    docker ps
-    ```
+```
+
+
+3. Verificar que los contenedores `db_usuarios` (puerto 5432) y `rabbitmq_usuarios` (puertos 5672/15672) se encuentran en estado `Up`:
+```bash
+docker ps
+
+```
 
 
 
 ---
 
-## 🗄️ Configuración de Persistencia y Conexión IDE
+## 🗄️ Configuración de Persistencia e Inicialización (DDL)
 
-Por motivos de seguridad e integridad del modelo de datos, la propiedad `spring.jpa.hibernate.ddl-auto` está configurada en `none`. Esto desactiva la generación automática del esquema por parte de Hibernate. El esquema (DDL) es determinista y se inicializa mediante el script `src/main/resources/schema.sql` en el arranque de la aplicación.
+Por motivos de seguridad e integridad del modelo de datos, la propiedad `spring.jpa.hibernate.ddl-auto` está configurada en `none`. El esquema (DDL) es determinista y se inicializa mediante el script `src/main/resources/schema.sql` en el arranque de la aplicación (forzado por `spring.sql.init.mode=always`).
 
-Para interactuar con la base de datos y auditar las tablas durante el desarrollo, es necesario configurar el Data Source en IntelliJ IDEA:
+Para interactuar con la base de datos durante el desarrollo, configura tu IDE (ej. IntelliJ Database Tool) con estos parámetros:
 
-1. Abrir la herramienta **Database** (panel lateral derecho en IntelliJ).
-2. Seleccionar **`+`** > **Data Source** > **PostgreSQL**.
-3. Configurar los parámetros de conexión para que coincidan con las variables de entorno de Docker:
-* **Host:** `localhost` (o `127.0.0.1`)
-* **Port:** `5432`
-* **User:** `postgres`
-* **Password:** `password`
+* **Host:** `localhost` | **Port:** `5432`
+* **User:** `postgres` | **Password:** `password`
 * **Database:** `usuarios_db`
-
-
-4. Descargar los drivers de PostgreSQL requeridos por el IDE si el sistema lo solicita (botón *Download* en el aviso inferior).
-5. Ejecutar **Test Connection** para asegurar que el IDE tiene acceso al contenedor. Al obtener un resultado satisfactorio, guardar la configuración.
 
 ---
 
 ## 🚀 Ejecución del Microservicio
 
-Una vez validada la conexión a la base de datos, el servicio puede inicializarse directamente desde el IDE ejecutando la clase principal `UsuariosApplication.java`, o mediante la CLI de Maven:
+Una vez validada la infraestructura (Docker) y creado el `.env`, el servicio puede inicializarse directamente desde el IDE ejecutando la clase `UsuariosApplication.java`, o mediante Maven:
 
 ```bash
 mvn spring-boot:run
+
 ```
 
-El servidor embebido Tomcat arrancará por defecto en el puerto `8081` (o el especificado en `application.yml`).
+El servidor embebido Tomcat arrancará en el puerto `8081` (o el especificado en `application.yml`).
 
 ---
 
-## 📊 Modelo de Datos (Esquema Relacional)
+## 🧪 Testing Automatizado (Unitario & Integración)
 
-La base de datos PostgreSQL está diseñada siguiendo el principio de aislamiento de microservicios, normalizando la información de identidad y manteniendo referencias débiles hacia dominios externos. Se compone de tres tablas principales:
+El microservicio cuenta con una suite de pruebas de nivel producción dividida en dos capas:
 
-### 1. Tabla `usuarios`
-Es el núcleo de identidad del sistema. Almacena la información personal, las credenciales de acceso y determina los permisos de cada individuo dentro de la plataforma.
-* **`id` (UUID):** Clave primaria. Se utiliza UUID en lugar de identificadores secuenciales enteros para garantizar que el ID sea único a nivel global y evitar colisiones cuando los microservicios intercambien información.
-* **`email` (UNIQUE):** Actúa como identificador natural (nombre de usuario) para el proceso de *login*, garantizando que no existan cuentas duplicadas.
-* **`password`:** Almacena la contraseña del usuario. Por seguridad, nunca se guarda en texto plano, sino que se encriptará utilizando el algoritmo Argon2id (hash + salt).
-* **`rol`:** Define el nivel de acceso (RBAC). Los valores permitidos son `visitante`, `socio`, `staff` y `admin`. El API Gateway utilizará este campo incrustado en el token JWT para autorizar o denegar peticiones.
+### 1. Pruebas Unitarias (`src/test/java/.../unit`)
 
-### 2. Tabla `socios`
-Gestiona la información de las suscripciones. Se ha diseñado como una tabla separada (relación 1 a 1) en lugar de incluir estas columnas en la tabla `usuarios` para cumplir con el Principio de Responsabilidad Única y evitar que los usuarios base (rol `visitante`) tengan multitud de columnas vacías (nulas).
-* **`usuario_id` (UUID - PK & FK):** Es a la vez su identificador y la clave foránea que lo vincula al usuario. Implementa la regla `ON DELETE CASCADE`: si el club da de baja y borra a un usuario, su registro de socio se destruye automáticamente, manteniendo la base de datos limpia.
-* **`numero_socio` (UNIQUE):** Identificador comercial amigable (ej. S-000123) para la gestión física e institucional.
-* **`estado` y `tipo_cuota`:** Controlan la validez de la suscripción (`activo`, `caducado`) y la periodicidad del cobro.
-* **`descuento_porcentaje`:** Valor numérico que los microservicios de *Entradas* y *Compras* consultarán de forma síncrona vía REST para aplicar rebajas en el carrito.
+Valida la lógica de negocio pura en la capa Service utilizando **Mockito** para simular la base de datos.
 
-### 3. Tabla `actividades`
-Actúa como un registro histórico (log) de las interacciones económicas del usuario con el club. Esta tabla se alimenta de forma asíncrona escuchando eventos en RabbitMQ (ej. "entrada comprada", "pedido creado").
-* **`usuario_id` (UUID - FK):** Vincula la actividad con el perfil del comprador (relación 1 a N).
-* **`tipo`:** Clasifica la actividad (`entrada` o `pedido`).
-* **`referencia_id` (UUID):** Esta es una decisión arquitectónica clave. Almacena el ID de la compra, pero **no** es una clave foránea (`FOREIGN KEY`) a nivel de base de datos. Dado que las entradas y pedidos reales se almacenan en bases de datos MongoDB (aisladas en otros microservicios), PostgreSQL no puede validar su existencia directamente. Actúa como un "puntero lógico" externo.
-* **`importe` y `fecha`:** Datos consolidados en el momento de la transacción para mantener un registro inmutable en el perfil del usuario, independientemente de si el precio del producto cambia en el futuro en la tienda.
+* **Cobertura:** Validaciones de registro, cambio de roles, lógicas de caducidad dinámica de socios y manejo de excepciones.
+
+### 2. Pruebas de Integración (`src/test/java/.../integration`)
+
+Certifica el ensamblaje completo del sistema de extremo a extremo.
+
+* Utiliza **Testcontainers** para levantar un contenedor efímero de PostgreSQL real de forma invisible y aislada.
+* Utiliza **MockMvc** para simular peticiones HTTP y validar el sistema de seguridad (códigos 200, 201, 403, 404, 409).
+* Prueba la **idempotencia** de RabbitMQ verificando que los eventos duplicados chocan contra la restricción `UNIQUE` en base de datos.
+
+**Para ejecutar toda la suite de pruebas (requiere Docker abierto):**
+
+```bash
+mvn test
+```
+### 3. Pruebas End-to-End (E2E) con Bruno
+El contrato de la API y el ciclo de vida completo del usuario se validan desde el exterior mediante la herramienta **Bruno** (alternativa ligera y *offline* a Postman). Las peticiones están guardadas como código de texto plano dentro del propio repositorio para evitar conflictos en Git.
+
+**Cómo ejecutar el flujo automatizado:**
+1. Abre Bruno y carga la colección `api-usuarios` ubicada en la raíz de este microservicio.
+2. Asegúrate de tener seleccionado el entorno **Local** (que define la variable estática `base_url`).
+3. Haz clic derecho sobre la carpeta **E2E - Ciclo de Vida Usuario** y selecciona **Run**.
+4. Bruno ejecutará secuencialmente las 10 peticiones (Registro -> Login -> Perfil -> Socios -> Actividades -> Borrado). La colección utiliza scripts (`bru.setVar()`) para inyectar dinámicamente el Token JWT y el UUID en la memoria temporal de una petición a otra sin modificar archivos locales.
