@@ -1,0 +1,50 @@
+### Crear producto
+POST http://localhost:8080/api/productos
+Content-Type: application/json
+
+{
+  "nombre": "Camiseta oficial 2026",
+  "descripcion": "Primera equipación del club",
+  "precio": 49.95,
+  "fotos": [],
+  "stockPorTalla": {
+    "S": 10,
+    "M": 15,
+    "L": 8,
+    "XL": 0
+  }
+}
+
+### Listar productos
+GET http://localhost:8080/api/productos
+
+### Pedido correcto (baja S de 10 a 9)
+POST http://localhost:8080/api/pedidos
+Content-Type: application/json
+
+{
+  "usuarioId": "user1",
+  "direccionEnvio": "Calle Mayor 1, Cáceres",
+  "lineas": [
+    { "productoId": "6af068fecb31f814d9631b08", "talla": "S", "cantidad": 1 }
+  ]
+}
+
+### Pedido que debe fallar: XL tiene stock 0
+POST http://localhost:8080/api/pedidos
+Content-Type: application/json
+
+{
+  "usuarioId": "user1",
+  "direccionEnvio": "Calle Mayor 1, Cáceres",
+  "lineas": [
+    { "productoId": "6af068fecb31f814d9631b08", "talla": "M", "cantidad": 1 },
+    { "productoId": "6af068fecb31f814d9631b08", "talla": "XL", "cantidad": 5 }
+  ]
+}
+
+### Ver productos (comprobar stock)
+GET http://localhost:8080/api/productos
+
+### Ver pedidos
+GET http://localhost:8080/api/pedidos

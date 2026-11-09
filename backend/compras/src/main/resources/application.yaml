@@ -1,3 +1,10 @@
 spring:
   application:
     name: compras
+  mongodb:
+    uri: ${MONGODB_URI}
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: admin
+    password: admin
