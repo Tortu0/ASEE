@@ -1,0 +1,30 @@
+info:
+  name: 05 - Consultar Estado Socio Inicial (GET)
+  type: http
+  seq: 5
+
+http:
+  method: GET
+  url: "{{base_url}}/usuarios/{{test_user_id}}/socio"
+  headers:
+    - name: X-User-Id
+      value: "{{test_user_id}}"
+    - name: X-User-Role
+      value: visitante
+  auth: inherit
+
+runtime:
+  assertions:
+    - expression: res.status
+      operator: eq
+      value: "200"
+    - expression: res.body.estado
+      operator: eq
+      value: no_socio
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false

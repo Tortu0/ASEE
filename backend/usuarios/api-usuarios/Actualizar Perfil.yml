@@ -1,0 +1,27 @@
+info:
+  name: Actualizar Perfil
+  type: http
+  seq: 4
+
+http:
+  method: PUT
+  url: http://localhost:8080/usuarios/b288d593-5978-41c5-9ab8-f8bfeb9022e2
+  headers:
+    - name: X-User-Id
+      value: b288d593-5978-41c5-9ab8-f8bfeb9022e2
+    - name: X-User-Role
+      value: visitante
+  body:
+    type: json
+    data: |-
+      {
+        "telefono": "+34600123456"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false

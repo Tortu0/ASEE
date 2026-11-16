@@ -1,3 +1,49 @@
+server:
+  port: ${SERVER_PORT:8081}          # contrato: http://localhost:8081/v1
+  servlet:
+    context-path: /v1
+
 spring:
   application:
     name: usuarios
+
+  # AÑADIR ESTA LÍNEA PARA FORZAR LA EJECUCIÓN DE SCHEMA.SQL
+  sql:
+    init:
+      mode: always
+
+  # COORDENADAS DE LA BASE DE DATOS
+  datasource:
+    url: jdbc:postgresql://localhost:5432/usuarios_db
+    username: postgres
+    password: password
+    driver-class-name: org.postgresql.Driver
+
+  # CONFIGURACIÓN DE JPA / HIBERNATE
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+    hibernate:
+      ddl-auto: none
+
+  # CONFIGURACIÓN RABBITMQ
+  rabbitmq:
+    host: ${RABBIT_HOST:localhost}
+    port: 5672
+    username: ${RABBIT_USER:guest}      # mismas variables en Usuarios, Entradas y Compras
+    password: ${RABBIT_PASS:guest}
+
+jwt:
+  # Spring buscará la variable de entorno JWT_SECRET.
+  secret: ${JWT_SECRET}
+  expiration: 3600
+
+# Administrador inicial: si ambas variables están definidas, se crea (o se promociona) al arrancar.
+usuarios:
+  admin-inicial:
+    email: ${ADMIN_EMAIL:}
+    password: ${ADMIN_PASSWORD:}
+    nombre: ${ADMIN_NOMBRE:Administrador}

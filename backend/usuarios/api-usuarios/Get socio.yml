@@ -1,0 +1,21 @@
+info:
+  name: Get socio
+  type: http
+  seq: 6
+
+http:
+  method: GET
+  url: http://localhost:8080/usuarios/b288d593-5978-41c5-9ab8-f8bfeb9022e2/socio
+  headers:
+    - name: X-User-Id
+      value: b288d593-5978-41c5-9ab8-f8bfeb9022e2
+    - name: X-User-Role
+      value: visitante
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false

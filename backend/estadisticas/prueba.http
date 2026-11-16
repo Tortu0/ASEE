@@ -1,0 +1,58 @@
+# Usa REST Client o el cliente HTTP de tu IDE. Ejecuta cada peticion individualmente.
+# Estos UUID pertenecen a los datos de ejemplo de Deportivo.
+# Copia el contenido de %LOCALAPPDATA%/ASEE/estadisticas/tokens/staff.jwt en token.
+# Renueva el token con scripts/crear-token.ps1. No guardes tokens en Git.
+@base = http://localhost:8085/v1
+@partidoId = 20000000-0000-0000-0000-000000000001
+@jugadorId = 10000000-0000-0000-0000-000000000001
+@token = PEGA_AQUI_EL_TOKEN_LOCAL
+@eventoId = COPIA_EL_EVENTO_ID_DEVUELTO_POR_POST
+
+### Disponibilidad: 200 y UP
+GET {{base}}/actuator/health/readiness
+
+### 1. Box score del partido (publico)
+GET {{base}}/partidos/{{partidoId}}/estadisticas
+
+### 2. Corregir varios jugadores: los omitidos se conservan
+PUT {{base}}/partidos/{{partidoId}}/estadisticas
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{"jugadores":[{"jugadorId":"{{jugadorId}}","estadisticas":{"titular":true,"segundosJugados":600,"masMenos":2}}],"periodoActual":1,"segundosRestantesPeriodo":540}
+
+### 3. Estadisticas individuales
+GET {{base}}/partidos/{{partidoId}}/jugadores/{{jugadorId}}/estadisticas
+
+### 4. Correccion parcial individual (no modifica los contadores de eventos)
+PUT {{base}}/partidos/{{partidoId}}/jugadores/{{jugadorId}}/estadisticas
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{"segundosJugados":900,"masMenos":3}
+
+### 5. Lista cronologica: admite desde, jugadorId y tipo
+GET {{base}}/partidos/{{partidoId}}/eventos
+
+### 6. Registrar una canasta: 201. Repetir el clientEventoId: 409
+POST {{base}}/partidos/{{partidoId}}/eventos
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{"clientEventoId":"prueba-manual-001","tipo":"tiro_2_anotado","jugadorId":"{{jugadorId}}","periodo":1,"segundosRestantes":530}
+
+### 7. Anular: pega arriba el eventoId de la respuesta del POST. Devuelve 204
+DELETE {{base}}/partidos/{{partidoId}}/eventos/{{eventoId}}
+Authorization: Bearer {{token}}
+
+### 8. Acumulados y detalle de jugador
+GET {{base}}/jugadores/{{jugadorId}}/estadisticas?temporada=2026-2027&incluirPartidos=true
+
+### 9. Historico de jugador
+GET {{base}}/jugadores/{{jugadorId}}/partidos?temporada=2026-2027
+
+### 10. Temporada: filtro opcional competicion=Liga%20regional
+GET {{base}}/temporadas/2026-2027/estadisticas
+
+### 11. Ranking: metrica obligatoria, minimoPartidos y limite opcionales
+GET {{base}}/temporadas/2026-2027/lideres?metrica=puntos&minimoPartidos=1&limite=10

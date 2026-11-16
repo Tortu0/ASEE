@@ -1,0 +1,23 @@
+### Partido inválido: debe dar 400
+POST http://localhost:8082/v1/partidos
+Content-Type: application/json
+
+{
+  "rival": ""
+}
+
+### Página 0: debe dar 400
+GET http://localhost:8082/v1/partidos?pagina=0
+
+### Estado que no existe: debe dar 400
+GET http://localhost:8082/v1/partidos?estado=inventado
+
+### Dorsal fuera de rango: debe dar 400
+POST http://localhost:8082/v1/jugadores
+Content-Type: application/json
+
+{
+  "nombre": "Prueba",
+  "dorsal": 150,
+  "posicion": "base"
+}

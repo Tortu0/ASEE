@@ -1,0 +1,7 @@
+info:
+  name: E2E - usuarios
+  type: folder
+  seq: 9
+
+request:
+  auth: inherit

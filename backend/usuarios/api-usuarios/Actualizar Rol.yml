@@ -1,0 +1,24 @@
+info:
+  name: Actualizar Rol
+  type: http
+  seq: 5
+
+http:
+  method: PUT
+  url: http://localhost:8080/usuarios/b288d593-5978-41c5-9ab8-f8bfeb9022e2/rol
+  headers:
+    - name: X-User-Id
+      value: b288d593-5978-41c5-9ab8-f8bfeb9022e2
+    - name: X-User-Role
+      value: admin
+  body:
+    type: json
+    data: '{"rol": "superman"}'
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false

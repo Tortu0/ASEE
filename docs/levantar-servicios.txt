@@ -1,0 +1,29 @@
+# Usuarios (8081)
+$env:JWT_SECRET = '01234567891011121314151617181920'
+$env:ADMIN_EMAIL = 'admin@club.test'; $env:ADMIN_PASSWORD = 'Club2026!'
+.\mvnw.cmd spring-boot:run
+
+# Deportivo (8082) e Institucional (8086), cada uno en su terminal
+.\mvnw.cmd spring-boot:run
+
+# Entradas (8083) — sin perfil dev
+$env:JWT_SECRET = '01234567891011121314151617181920'
+.\mvnw.cmd spring-boot:run
+
+# Estadísticas (8085) — con JWT_SECRET acepta los tokens de Usuarios
+$env:JWT_SECRET = '01234567891011121314151617181920'
+.\mvnw.cmd spring-boot:run
+
+# Terminal de Compras (backend\compras)
+$env:JWT_SECRET = '01234567891011121314151617181920'
+.\mvnw.cmd spring-boot:run
+
+
+desde frontend:
+npm install
+$env:JWT_SECRET = '01234567891011121314151617181920'   
+$env:STATS_TOKEN_MODE = 'passthrough'
+npm start                      # http://localhost:8080
+# en otro terminal:
+$env:ADMIN_EMAIL = 'admin@club.test'; $env:ADMIN_PASSWORD = 'Club2026!'
+npm run seed                   # crea staff@club.test y socio@club.test (clave Club2026!)
