@@ -1,0 +1,165 @@
+services:
+
+  # ==========================================
+  # 1. INFRAESTRUCTURA (Bases de datos y Mensajería)
+  # ==========================================
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: usuarios_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d usuarios_db"]
+      interval: 5s
+      retries: 20
+
+  mongo:
+    image: mongo:7
+    command: ["--replSet", "asee-local", "--bind_ip_all"]
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "try { rs.status() } catch (e) { rs.initiate({_id:'asee-local',members:[{_id:0,host:'localhost:27017'}]}) } quit(db.hello().isWritablePrimary ? 0 : 1)"]
+      interval: 5s
+      timeout: 10s
+      retries: 20
+      start_period: 10s
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      retries: 10
+
+  # ==========================================
+  # 2. MICROSERVICIOS BACKEND (Java Spring Boot)
+  # ==========================================
+  usuarios:
+    build: ./backend/usuarios
+    ports:
+      - "8081:8081"
+    environment:
+      - SERVER_PORT=8081
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/usuarios_db
+      - RABBIT_HOST=rabbitmq
+      - JWT_SECRET=${JWT_SECRET}
+      - ADMIN_EMAIL=${ADMIN_EMAIL}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  deportivo:
+    build: ./backend/deportivo
+    ports:
+      - "8082:8082"
+    environment:
+      - SERVER_PORT=8082
+      - MONGODB_URI=mongodb://mongo:27017
+    depends_on:
+      mongo:
+        condition: service_healthy
+
+  entradas:
+    build: ./backend/entradas
+    ports:
+      - "8083:8083"
+    environment:
+      - SERVER_PORT=8083
+      - MONGODB_URI=mongodb://mongo:27017/entradas
+      - RABBIT_HOST=rabbitmq
+      - JWT_SECRET=${JWT_SECRET}
+      - DEPORTIVO_URL=http://deportivo:8082/v1
+      - USUARIOS_URL=http://usuarios:8081/v1
+    depends_on:
+      mongo:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      usuarios:
+        condition: service_started
+      deportivo:
+        condition: service_started
+
+  compras:
+    build: ./backend/compras
+    ports:
+      - "8084:8084"
+    environment:
+      - SERVER_PORT=8084
+      - MONGODB_URI=mongodb://mongo:27017/compras
+      - RABBIT_HOST=rabbitmq
+      - JWT_SECRET=${JWT_SECRET}
+      - USUARIOS_URL=http://usuarios:8081/v1
+    depends_on:
+      mongo:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      usuarios:
+        condition: service_started
+
+  estadisticas:
+    build: ./backend/estadisticas
+    ports:
+      - "8085:8085"
+    environment:
+      - SERVER_PORT=8085
+      - MONGODB_URI=mongodb://mongo:27017/?replicaSet=asee-local&directConnection=true&serverSelectionTimeoutMS=3000&connectTimeoutMS=3000
+      - JWT_SECRET=${JWT_SECRET}
+      - DEPORTIVO_BASE_URL=http://deportivo:8082/v1
+    depends_on:
+      mongo:
+        condition: service_healthy
+      deportivo:
+        condition: service_started
+
+  institucional:
+    build: ./backend/institucional
+    ports:
+      - "8086:8086"
+    environment:
+      - SERVER_PORT=8086
+      - MONGODB_URI=mongodb://mongo:27017
+    depends_on:
+      mongo:
+        condition: service_healthy
+
+  # ==========================================
+  # 3. FRONTEND & API GATEWAY (Node.js)
+  # ==========================================
+  gateway:
+    build: ./frontend
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - JWT_SECRET=${JWT_SECRET}
+      - STATS_TOKEN_MODE=passthrough
+      - UPSTREAM_HOST=host.docker.internal
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - usuarios
+      - deportivo
+      - entradas
+      - compras
+      - estadisticas
+      - institucional
+
+volumes:
+  pg-data:
+  mongo-data:
