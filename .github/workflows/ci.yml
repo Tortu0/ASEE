@@ -17,7 +17,9 @@ jobs:
         servicio: [usuarios, compras, deportivo, entradas, estadisticas, institucional]
 
     env:
-      JWT_SECRET: 01234567891011121314151617181920
+      JWT_SECRET: "01234567891011121314151617181920"
+      ADMIN_EMAIL: "admin@club.test"
+      ADMIN_PASSWORD: "Club2026!"
 
     steps:
       - name: Descargar código
