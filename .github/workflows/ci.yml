@@ -1,7 +1,5 @@
 name: CI - Tests Microservicios
 
-name: CI - Tests Microservicios
-
 on:
   push: # Se ejecuta en cada commit de cualquier rama
   pull_request:
