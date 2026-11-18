@@ -1,10 +1,13 @@
 name: CI - Tests Microservicios
 
+name: CI - Tests Microservicios
+
 on:
-  push:
-    branches: [ "main", "master" ]
+  push: # Se ejecuta en cada commit de cualquier rama
   pull_request:
     branches: [ "main", "master" ]
+  schedule:
+    - cron: '0 2 * * *' # Todos los días a las 02:00 UTC (03:00 AM hora peninsular)
 
 jobs:
   test-backend:
