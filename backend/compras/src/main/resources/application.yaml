@@ -1,3 +1,33 @@
+server:
+  port: ${SERVER_PORT:8084}           # contrato: http://localhost:8084/v1
+  servlet:
+    context-path: /v1
+
 spring:
   application:
     name: compras
+  mongodb:
+    # Ya no hace falta replica set: el stock se descuenta con operaciones atómicas de un documento.
+    uri: ${MONGODB_URI:mongodb://localhost:27017/compras}
+  rabbitmq:
+    host: ${RABBIT_HOST:localhost}
+    port: 5672
+    username: ${RABBIT_USER:guest}      # mismas variables en Usuarios, Entradas y Compras
+    password: ${RABBIT_PASS:guest}
+
+compras:
+  security:
+    # Mismo secreto que Usuarios (JWT_SECRET). Si se define, Compras exige y valida el Bearer HS256 y IGNORA
+    # X-User-Id / X-User-Role. Si está vacío, confía en las cabeceras que inyecta el API Gateway: en ese caso
+    # el servicio NO debe ser alcanzable sin pasar por el gateway.
+    jwt-secret: ${JWT_SECRET:}
+  usuarios:
+    url: ${USUARIOS_URL:http://localhost:8081/v1}
+  pago:
+    # Pasarela SIMULADA (aún no hay una real): ok | rechazado | incierto
+    simulado: ${PAGO_SIMULADO:ok}
+    # Un pago "en curso" más antiguo que esto se considera abandonado y se consulta a la pasarela
+    en-curso-max-segundos: ${PAGO_EN_CURSO_MAX_SEGUNDOS:60}
+  eventos:
+    publicador: ${EVENTOS_PUBLICADOR:true}   # false desactiva el reintento periódico (p. ej. en tests)
+    intervalo-ms: ${EVENTOS_INTERVALO_MS:15000}

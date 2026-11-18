@@ -1,0 +1,34 @@
+info:
+  name: 07 - Actualizar Rol (PUT)
+  type: http
+  seq: 7
+
+http:
+  method: PUT
+  url: "{{base_url}}/usuarios/{{test_user_id}}/rol"
+  headers:
+    - name: X-User-Role
+      value: admin
+  body:
+    type: json
+    data: |-
+      {
+        "rol": "admin"
+      }
+  auth: inherit
+
+runtime:
+  assertions:
+    - expression: res.status
+      operator: eq
+      value: "200"
+    - expression: res.body.rol
+      operator: eq
+      value: admin
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false

@@ -1,0 +1,35 @@
+info:
+  name: 06 - Alta de Cuota Socio (PUT)
+  type: http
+  seq: 6
+
+http:
+  method: PUT
+  url: "{{base_url}}/usuarios/{{test_user_id}}/socio"
+  headers:
+    - name: X-User-Role
+      value: admin
+  body:
+    type: json
+    data: |-
+      {
+        "tipoCuota": "ANUAL",
+        "fechaCaducidad": "2027-12-31"
+      }
+  auth: inherit
+
+runtime:
+  assertions:
+    - expression: res.status
+      operator: eq
+      value: "200"
+    - expression: res.body.estado
+      operator: eq
+      value: activo
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false

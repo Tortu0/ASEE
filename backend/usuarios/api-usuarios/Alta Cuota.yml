@@ -1,0 +1,26 @@
+info:
+  name: Alta Cuota
+  type: http
+  seq: 7
+
+http:
+  method: PUT
+  url: http://localhost:8080/usuarios/b288d593-5978-41c5-9ab8-f8bfeb9022e2/socio
+  headers:
+    - name: X-User-Role
+      value: admin
+  body:
+    type: json
+    data: |-
+      {
+        "tipoCuota": "ANUAL",
+        "fechaCaducidad": "2027-11-01"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false

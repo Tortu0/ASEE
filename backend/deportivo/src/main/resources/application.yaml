@@ -1,3 +1,20 @@
 spring:
   application:
     name: deportivo
+  mongodb:
+    uri: ${MONGODB_URI:mongodb://localhost:27017}
+    database: deportivo
+    representation:
+      uuid: standard
+
+server:
+  port: 8082
+  servlet:
+    context-path: /v1
+
+app:
+  # Carga jugadores, partidos y noticias de ejemplo si las colecciones están vacías.
+  # Ponlo a false (DATOS_EJEMPLO=false) en entornos reales.
+  datos-ejemplo: ${DATOS_EJEMPLO:true}
+  # CORS para que el frontend pueda llamar directamente en desarrollo. Con el API Gateway no hace falta.
+  cors-dev: ${CORS_DEV:true}

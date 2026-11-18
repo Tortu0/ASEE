@@ -1,0 +1,42 @@
+# Infraestructura local para TODOS los microservicios: PostgreSQL (Usuarios), MongoDB como replica set de un nodo
+# (Deportivo, Institucional, Entradas, Compras y Estadísticas; solo Estadísticas necesita el replica set por sus transacciones) y RabbitMQ.
+#   cd infra && docker compose up -d
+# Puertos publicados: 5432 (PostgreSQL), 27017 (MongoDB), 5672 (AMQP) y 15672 (consola de RabbitMQ, guest/guest).
+services:
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: usuarios_db
+      POSTGRES_USER: postgres        # coincide con usuarios/application.yaml
+      POSTGRES_PASSWORD: password
+    ports: ["5432:5432"]
+    volumes: [pg-data:/var/lib/postgresql/data]
+    healthcheck: { test: ["CMD-SHELL", "pg_isready -U postgres -d usuarios_db"], interval: 5s, retries: 20 }
+
+  mongo:
+    image: mongo:7
+    command: ["--replSet", "asee-local", "--bind_ip_all"]
+    ports: ["27017:27017"]
+    volumes: [mongo-data:/data/db]
+    healthcheck:
+      test:
+        - CMD
+        - mongosh
+        - --quiet
+        - --eval
+        - >-
+          try { rs.status() } catch (e) { rs.initiate({_id:'asee-local',members:[{_id:0,host:'localhost:27017'}]}) }
+          quit(db.hello().isWritablePrimary ? 0 : 1)
+      interval: 5s
+      timeout: 10s
+      retries: 20
+      start_period: 10s
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports: ["5672:5672", "15672:15672"]     # usuario/clave por defecto: guest/guest (los servicios usan RABBIT_USER/RABBIT_PASS)
+    healthcheck: { test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"], interval: 10s, retries: 10 }
+
+volumes:
+  pg-data:
+  mongo-data:

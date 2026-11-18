@@ -1,0 +1,36 @@
+info:
+  name: 04 - Actualizar Perfil (PUT)
+  type: http
+  seq: 4
+
+http:
+  method: PUT
+  url: "{{base_url}}/usuarios/{{test_user_id}}"
+  headers:
+    - name: X-User-Id
+      value: "{{test_user_id}}"
+    - name: X-User-Role
+      value: visitante
+  body:
+    type: json
+    data: |-
+      {
+        "telefono": "+34999999999"
+      }
+  auth: inherit
+
+runtime:
+  assertions:
+    - expression: res.status
+      operator: eq
+      value: "200"
+    - expression: res.body.telefono
+      operator: eq
+      value: '"+34999999999"'
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false

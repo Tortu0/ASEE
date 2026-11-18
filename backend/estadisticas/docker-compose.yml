@@ -1,0 +1,46 @@
+services:
+  mongo:
+    image: mongo:8.0
+    # Replica set de un nodo: tu MongoConfig lo exige por las transacciones
+    command: ["--replSet", "asee-local", "--bind_ip_all"]
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test:
+        - CMD
+        - mongosh
+        - --quiet
+        - --eval
+        - >-
+          try { rs.status() } catch (e) {
+          rs.initiate({_id:'asee-local',members:[{_id:0,host:'mongo:27017'}]}) }
+          quit(db.hello().isWritablePrimary ? 0 : 1)
+      interval: 5s
+      timeout: 10s
+      retries: 20
+      start_period: 10s
+
+  estadisticas:
+    build: .
+    ports:
+      - "8085:8085"
+    depends_on:
+      mongo:
+        condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      MONGODB_URI: mongodb://mongo:27017/?replicaSet=asee-local
+      MONGODB_DATABASE: estadisticas
+      # Clave publica JWT montada como fichero (ver volumes)
+      JWT_PUBLIC_KEY: file:/keys/public.pem
+      JWT_ISSUER: asee-local
+      JWT_AUDIENCE: estadisticas
+      # Deportivo corriendo en tu maquina (fuera de Docker)
+      DEPORTIVO_BASE_URL: http://host.docker.internal:8082/v1
+      # DEPORTIVO_SERVICE_TOKEN: ${DEPORTIVO_SERVICE_TOKEN:-}
+    volumes:
+      - ${KEYS_DIR:-./keys}:/keys:ro
+
+volumes:
+  mongo-data:

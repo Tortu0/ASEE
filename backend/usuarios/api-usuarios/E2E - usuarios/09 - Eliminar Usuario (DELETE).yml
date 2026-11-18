@@ -1,0 +1,25 @@
+info:
+  name: 09 - Eliminar Usuario (DELETE)
+  type: http
+  seq: 9
+
+http:
+  method: DELETE
+  url: "{{base_url}}/usuarios/{{test_user_id}}"
+  headers:
+    - name: X-User-Role
+      value: admin
+  auth: inherit
+
+runtime:
+  assertions:
+    - expression: res.status
+      operator: eq
+      value: "204"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false

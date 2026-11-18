@@ -1,0 +1,43 @@
+spring:
+  application:
+    name: estadisticas
+  mongodb:
+    uri: ${MONGODB_URI:mongodb://localhost:27017/?replicaSet=asee-local&serverSelectionTimeoutMS=3000&connectTimeoutMS=3000}
+    database: ${MONGODB_DATABASE:estadisticas}
+    representation:
+      uuid: standard
+
+server:
+  port: ${SERVER_PORT:8085}
+  servlet:
+    context-path: /v1
+
+app:
+  allowed-origins: ${ALLOWED_ORIGINS:http://localhost:*,http://127.0.0.1:*}
+  security:
+    public-key: ${JWT_PUBLIC_KEY:}
+    jwk-set-uri: ${JWT_JWK_SET_URI:}
+    issuer: ${JWT_ISSUER:asee-local}
+    audience: ${JWT_AUDIENCE:estadisticas}
+    hmac-secret: ${JWT_SECRET:}      # si se define, acepta los tokens HS256 de Usuarios (ver SecurityConfig)
+  deportivo:
+    base-url: ${DEPORTIVO_BASE_URL:http://localhost:8082/v1}
+    connect-timeout: 3s
+    read-timeout: 5s
+    service-token: ${DEPORTIVO_SERVICE_TOKEN:}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+      probes:
+        enabled: true
+      group:
+        liveness:
+          include: livenessState
+        readiness:
+          include: readinessState,mongo
