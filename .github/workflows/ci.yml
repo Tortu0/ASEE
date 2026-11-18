@@ -1,17 +1,18 @@
 name: CI - Tests Microservicios
 
 on:
-  push: # Se ejecuta en cada commit de cualquier rama
+  workflow_dispatch:
+  push:
   pull_request:
     branches: [ "main", "master" ]
   schedule:
-    - cron: '0 2 * * *' # Todos los días a las 02:00 UTC (03:00 AM hora peninsular)
+    - cron: '0 2 * * *'
 
 jobs:
   test-backend:
     runs-on: ubuntu-latest
     strategy:
-      fail-fast: false # Si falla un servicio, sigue probando los demás
+      fail-fast: false
       matrix:
         servicio: [usuarios, compras, deportivo, entradas, estadisticas, institucional]
 
@@ -30,9 +31,14 @@ jobs:
           cache: 'maven'
           cache-dependency-path: backend/${{ matrix.servicio }}/pom.xml
 
-      # Usuarios usa Testcontainers (levanta su propio Postgres/RabbitMQ).
-      # Para el resto, levantamos Mongo (con replica set) y RabbitMQ en localhost.
-      - name: Levantar MongoDB y RabbitMQ
+      - name: Levantar PostgreSQL y RabbitMQ (Usuarios)
+        if: matrix.servicio == 'usuarios'
+        run: |
+          docker run -d --name postgres -p 5432:5432 -e POSTGRES_DB=usuarios_db -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=password postgres:15-alpine
+          docker run -d --name rabbitmq -p 5672:5672 rabbitmq:3-management
+          sleep 10
+
+      - name: Levantar MongoDB y RabbitMQ (Resto de servicios)
         if: matrix.servicio != 'usuarios'
         run: |
           docker run -d --name mongo -p 27017:27017 mongo:7 --replSet asee-local --bind_ip_all
