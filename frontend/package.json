@@ -23,6 +23,8 @@
   "devDependencies": {
     "@fontsource/big-shoulders-display": "^5.1.0",
     "@fontsource/hanken-grotesk": "^5.1.0",
+    "@playwright/test": "^1.65.1",
+    "@types/node": "^26.6.6",
     "qrcode-generator": "^1.4.4"
   }
 }

@@ -149,3 +149,14 @@ dialog::backdrop { background: #0C1F33aa; } dialog > div { padding: 24px; } dial
 .evto { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; } .evto .btn { min-height: 38px; font-size: .85rem; }
 main:focus { outline: none; }
 .hero .marcador { margin: 22px 0 14px; }
+
+
+body {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+main#app {
+  flex: 1;
+}
