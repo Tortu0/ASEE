@@ -4,7 +4,7 @@ import { html, esc, raw, cargando, aviso, toast, cerrarModal, acts, forms, clean
 const ROUTES = [
   ['/', 'home'], ['/partidos', 'partidos'], ['/partidos/:id', 'partidos'], ['/entradas/:id', 'entradas'], ['/plantilla', 'plantilla'], ['/jugadores/:id', 'plantilla'],
   ['/noticias', 'noticias'], ['/noticias/:id', 'noticias'], ['/estadisticas', 'estadisticas'], ['/tienda', 'tienda'], ['/carrito', 'tienda', 'auth'], ['/club', 'club'],
-  ['/entrar', 'cuenta'], ['/cuenta', 'cuenta', 'auth'], ['/cuenta/:tab', 'cuenta', 'auth'], ['/gestion', 'gestion', 'staff'], ['/gestion/:sec', 'gestion', 'staff'], ['/estado', 'estado'],
+  ['/entrar', 'cuenta'], ['/cuenta', 'cuenta', 'auth'], ['/cuenta/:tab', 'cuenta', 'auth'], ['/gestion', 'gestion', 'staff'], ['/gestion/:sec', 'gestion', 'staff'], ['/estado', 'estado', 'admin'],
 ].map(([p, mod, need]) => ({ mod, need, keys: [...p.matchAll(/:(\w+)/g)].map(m => m[1]), re: new RegExp('^' + p.replace(/:\w+/g, '([^/]+)') + '$'), path: p }));
 const NAV = [['/partidos', 'Partidos'], ['/plantilla', 'Plantilla'], ['/noticias', 'Noticias'], ['/estadisticas', 'Estadísticas'], ['/tienda', 'Tienda'], ['/club', 'El club']];
 const app = document.getElementById('app');
@@ -13,8 +13,9 @@ function shell() {
   const u = session.user;
   document.getElementById('nav').innerHTML = [...NAV, ...(session.staff ? [['/gestion', 'Gestión']] : [])].map(([h, t]) => `<a href="#${h}">${t}</a>`).join('');
   document.getElementById('cuenta').innerHTML = u
-    ? `<a class="btn sec chico" href="#/carrito">Carrito</a><a class="btn sec chico" href="#/cuenta">${esc(u.nombre.split(' ')[0])}</a><button class="btn chico" data-act="salir">Salir</button>`
-    : `<a class="btn sec chico" href="#/entrar?tab=registro">Crear cuenta</a><a class="btn chico" href="#/entrar">Entrar</a>`;
+      ? `<a class="btn sec chico" href="#/carrito">Carrito</a><a class="btn sec chico" href="#/cuenta">${esc(u.nombre.split(' ')[0])}</a><button class="btn chico" data-act="salir">Salir</button>`
+      : `<a class="btn sec chico" href="#/entrar?tab=registro">Crear cuenta</a><a class="btn chico" href="#/entrar">Entrar</a>`;
+  document.getElementById('pie-admin').innerHTML = u?.rol === 'admin' ? `<a href="#/estado">Estado del sistema</a>` : '';
   marcarNav();
 }
 function marcarNav() {
@@ -31,6 +32,7 @@ async function route() {
   if (!r) { app.innerHTML = aviso('Esta página no existe.', 'error').s; return; }
   if (r.need && !session.user) { location.replace(`#/entrar?volver=${encodeURIComponent(path)}`); return; }
   if (r.need === 'staff' && !session.staff) { app.innerHTML = aviso('Esta zona es solo para el personal del club.', 'warn').s; return; }
+  if (r.need === 'admin' && session.user?.rol !== 'admin') { app.innerHTML = aviso('Esta zona es solo para administradores.', 'warn').s; return; }
   app.innerHTML = cargando().s;
   try {
     const mod = await import(`./pages/${r.mod}.js`);
