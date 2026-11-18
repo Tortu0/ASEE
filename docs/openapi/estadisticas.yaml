@@ -1,0 +1,1152 @@
+openapi: 3.0.3
+info:
+  title: API de Estadísticas de Baloncesto
+  description: >
+    Microservicio encargado de registrar, consultar y agregar las estadísticas
+    de los jugadores del club. Permite almacenar estadísticas por partido,
+    calcular acumulados de temporada y registrar eventos en tiempo real durante
+    los partidos que tengan seguimiento estadístico en directo. Es el
+    propietario único de las estadísticas por jugador y por partido (no se
+    duplican en el microservicio Deportivo).
+
+    Antes de registrar estadísticas o eventos, este servicio valida contra
+    Deportivo que el partido y el jugador existen, mediante una COMUNICACIÓN
+    SÍNCRONA de tipo CONSULTA:
+
+    Estadísticas -> Deportivo -> GET /partidos/{partidoId}
+
+    Estadísticas -> Deportivo -> GET /jugadores/{jugadorId}
+
+    IMPORTANTE: esta especificación OpenAPI describe únicamente la parte REST
+    del servicio. La actualización del marcador y de las estadísticas EN
+    DIRECTO se envía al Front-end mediante un canal WebSocket aparte, que no
+    puede describirse con OpenAPI y se documenta de forma independiente en la
+    memoria del proyecto. Los endpoints REST de este fichero sirven para
+    registrar los eventos (fuente de verdad) y para obtener una "foto" del
+    estado actual (por ejemplo, al cargar la página o si falla el WebSocket).
+  version: 1.0.0
+
+servers:
+  - url: https://api.club.example/estadisticas/v1
+    description: Servidor de producción (vía API Gateway)
+  - url: http://localhost:8085/v1
+    description: Entorno local de desarrollo
+
+tags:
+  - name: Partidos
+    description: Box score y estadísticas completas de un partido
+  - name: Tiempo real
+    description: Registro cronológico de acciones estadísticas durante un partido
+  - name: Jugadores
+    description: Estadísticas acumuladas e histórico de un jugador
+  - name: Temporadas
+    description: Estadísticas globales de una temporada
+  - name: Líderes
+    description: Rankings estadísticos de los jugadores del club
+
+paths:
+  /partidos/{partidoId}/estadisticas:
+    parameters:
+      - $ref: '#/components/parameters/PartidoId'
+
+    get:
+      tags: [Partidos]
+      summary: Obtener las estadísticas completas de un partido
+      description: >
+        Devuelve el box score de todos los jugadores del club para el partido
+        indicado. Si el partido está en juego, los datos representan el último
+        estado disponible en tiempo real; las actualizaciones instantáneas
+        llegan al Front-end por WebSocket, no mediante este endpoint.
+      operationId: obtenerEstadisticasPartido
+      security: []
+      responses:
+        '200':
+          description: Estadísticas completas del partido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EstadisticasPartido'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags: [Partidos]
+      summary: Registrar o corregir el box score completo de un partido
+      description: >
+        Permite a staff o admin cargar manualmente las estadísticas de todos los
+        jugadores o corregir el resultado calculado a partir de eventos en vivo.
+
+        Antes de guardar, este servicio comprueba que el partido existe:
+
+        Estadísticas -> Deportivo -> GET /partidos/{partidoId}
+      operationId: actualizarEstadisticasPartido
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EstadisticasPartidoUpdate'
+      responses:
+        '200':
+          description: Estadísticas actualizadas
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EstadisticasPartido'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: >
+            No existe ningún partido con el identificador indicado, según la
+            consulta realizada a Deportivo, o alguno de los jugadorId
+            enviados no existe en Deportivo.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: >
+            No se ha podido validar el partido porque el microservicio
+            Deportivo no está disponible.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /partidos/{partidoId}/jugadores/{jugadorId}/estadisticas:
+    parameters:
+      - $ref: '#/components/parameters/PartidoId'
+      - $ref: '#/components/parameters/JugadorId'
+
+    get:
+      tags: [Partidos]
+      summary: Obtener las estadísticas de un jugador en un partido
+      operationId: obtenerEstadisticasJugadorPartido
+      security: []
+      responses:
+        '200':
+          description: Estadísticas individuales en el partido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EstadisticaJugadorPartido'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags: [Partidos]
+      summary: Corregir las estadísticas de un jugador en un partido
+      description: >
+        Antes de guardar, este servicio comprueba que el partido y el jugador
+        existen:
+
+        Estadísticas -> Deportivo -> GET /partidos/{partidoId}
+
+        Estadísticas -> Deportivo -> GET /jugadores/{jugadorId}
+      operationId: actualizarEstadisticasJugadorPartido
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EstadisticaJugadorPartidoUpdate'
+      responses:
+        '200':
+          description: Estadísticas individuales actualizadas
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EstadisticaJugadorPartido'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: >
+            El partido o el jugador indicados no existen, según la consulta
+            realizada a Deportivo.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: >
+            No se ha podido validar el partido o el jugador porque el
+            microservicio Deportivo no está disponible.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /partidos/{partidoId}/eventos:
+    parameters:
+      - $ref: '#/components/parameters/PartidoId'
+
+    get:
+      tags: [Tiempo real]
+      summary: Obtener el play-by-play estadístico del partido
+      description: >
+        Devuelve los eventos registrados en orden cronológico. Puede utilizarse
+        para reconstruir o auditar las estadísticas en directo.
+      operationId: listarEventosPartido
+      security: []
+      parameters:
+        - name: desde
+          in: query
+          description: Devuelve únicamente eventos posteriores a este instante
+          schema:
+            type: string
+            format: date-time
+        - name: jugadorId
+          in: query
+          description: Filtrar los eventos por jugador
+          schema:
+            type: string
+            format: uuid
+        - name: tipo
+          in: query
+          description: Filtrar por tipo de evento
+          schema:
+            $ref: '#/components/schemas/TipoEventoEstadistico'
+      responses:
+        '200':
+          description: Eventos estadísticos del partido
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EventoEstadistico'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    post:
+      tags: [Tiempo real]
+      summary: Registrar un evento estadístico en tiempo real
+      description: >
+        Registra una acción del partido y actualiza automáticamente el box score
+        del jugador. El campo clientEventoId permite evitar duplicados si el
+        dispositivo reintenta el envío. Tras guardarse, el evento se retransmite
+        al Front-end mediante el canal WebSocket (fuera del alcance de esta
+        especificación OpenAPI).
+
+        Si el evento incluye jugadorId, este servicio comprueba que el jugador
+        existe en Deportivo:
+
+        Estadísticas -> Deportivo -> GET /jugadores/{jugadorId}
+      operationId: registrarEventoPartido
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EventoEstadisticoCreate'
+      responses:
+        '201':
+          description: Evento registrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventoEstadistico'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: >
+            El partido no existe, o el jugadorId indicado no existe según la
+            consulta realizada a Deportivo.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          description: >
+            No se ha podido validar el jugador porque el microservicio
+            Deportivo no está disponible.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /partidos/{partidoId}/eventos/{eventoId}:
+    parameters:
+      - $ref: '#/components/parameters/PartidoId'
+      - $ref: '#/components/parameters/EventoId'
+
+    delete:
+      tags: [Tiempo real]
+      summary: Anular un evento estadístico incorrecto
+      description: >
+        El evento se marca como anulado y el servicio recalcula las estadísticas
+        afectadas. Se conserva para mantener la trazabilidad del partido.
+      operationId: anularEventoPartido
+      security:
+        - bearerAuth: []
+      responses:
+        '204':
+          description: Evento anulado y estadísticas recalculadas
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /jugadores/{jugadorId}/estadisticas:
+    parameters:
+      - $ref: '#/components/parameters/JugadorId'
+
+    get:
+      tags: [Jugadores]
+      summary: Obtener estadísticas de temporada de un jugador
+      description: >
+        Devuelve totales, promedios, porcentajes de tiro y métricas avanzadas
+        para la temporada indicada.
+      operationId: obtenerEstadisticasJugador
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/TemporadaQuery'
+        - name: competicion
+          in: query
+          description: Filtrar por competición
+          schema:
+            type: string
+        - name: incluirPartidos
+          in: query
+          description: Incluir el detalle partido a partido
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: Estadísticas de temporada del jugador
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EstadisticasJugadorTemporada'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /jugadores/{jugadorId}/partidos:
+    parameters:
+      - $ref: '#/components/parameters/JugadorId'
+
+    get:
+      tags: [Jugadores]
+      summary: Obtener el histórico estadístico partido a partido de un jugador
+      operationId: listarPartidosJugador
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/TemporadaQuery'
+        - name: competicion
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Histórico estadístico del jugador
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EstadisticaJugadorPartido'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /temporadas/{temporada}/estadisticas:
+    parameters:
+      - $ref: '#/components/parameters/TemporadaPath'
+
+    get:
+      tags: [Temporadas]
+      summary: Obtener estadísticas de todos los jugadores en una temporada
+      operationId: obtenerEstadisticasTemporada
+      security: []
+      parameters:
+        - name: competicion
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Estadísticas de todos los jugadores
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EstadisticasJugadorTemporada'
+
+  /temporadas/{temporada}/lideres:
+    parameters:
+      - $ref: '#/components/parameters/TemporadaPath'
+
+    get:
+      tags: [Líderes]
+      summary: Obtener el ranking de jugadores por una estadística
+      operationId: obtenerLideresTemporada
+      security: []
+      parameters:
+        - name: metrica
+          in: query
+          required: true
+          schema:
+            $ref: '#/components/schemas/MetricaRanking'
+        - name: competicion
+          in: query
+          schema:
+            type: string
+        - name: minimoPartidos
+          in: query
+          description: Mínimo de partidos disputados para aparecer en el ranking
+          schema:
+            type: integer
+            minimum: 0
+            default: 1
+        - name: limite
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 10
+      responses:
+        '200':
+          description: Ranking solicitado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RankingEstadistico'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Token JWT con expiración, validado por el API Gateway.
+
+  parameters:
+    PartidoId:
+      name: partidoId
+      in: path
+      required: true
+      description: Identificador único del partido en el microservicio Deportivo
+      schema:
+        type: string
+        format: uuid
+
+    JugadorId:
+      name: jugadorId
+      in: path
+      required: true
+      description: Identificador único del jugador en el microservicio Deportivo
+      schema:
+        type: string
+        format: uuid
+
+    EventoId:
+      name: eventoId
+      in: path
+      required: true
+      description: Identificador único del evento estadístico
+      schema:
+        type: string
+        format: uuid
+
+    TemporadaPath:
+      name: temporada
+      in: path
+      required: true
+      description: Temporada en formato AAAA-AAAA
+      schema:
+        type: string
+        pattern: '^[0-9]{4}-[0-9]{4}$'
+        example: '2026-2027'
+
+    TemporadaQuery:
+      name: temporada
+      in: query
+      required: true
+      description: Temporada en formato AAAA-AAAA
+      schema:
+        type: string
+        pattern: '^[0-9]{4}-[0-9]{4}$'
+        example: '2026-2027'
+
+  responses:
+    BadRequest:
+      description: Petición mal formada o datos estadísticos no válidos
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    Unauthorized:
+      description: Token ausente, inválido o caducado
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    Forbidden:
+      description: El rol del usuario no tiene permisos para esta operación
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    NotFound:
+      description: Partido, jugador, evento o temporada no encontrados
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    Conflict:
+      description: El evento ya fue registrado o existe un conflicto con el estado actual del partido
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  schemas:
+    Error:
+      type: object
+      required: [codigo, mensaje]
+      properties:
+        codigo:
+          type: integer
+          example: 404
+        mensaje:
+          type: string
+          example: Recurso no encontrado
+        detalles:
+          type: array
+          items:
+            type: string
+
+    EstadoSeguimientoPartido:
+      type: string
+      enum:
+        - no_iniciado
+        - en_directo
+        - descanso
+        - finalizado
+
+    TipoEventoEstadistico:
+      type: string
+      description: Acción que modifica o contextualiza las estadísticas del partido
+      enum:
+        - inicio_partido
+        - inicio_periodo
+        - fin_periodo
+        - fin_partido
+        - entra_pista
+        - sale_pista
+        - tiro_2_anotado
+        - tiro_2_fallado
+        - tiro_3_anotado
+        - tiro_3_fallado
+        - tiro_libre_anotado
+        - tiro_libre_fallado
+        - rebote_ofensivo
+        - rebote_defensivo
+        - asistencia
+        - robo
+        - perdida
+        - tapon
+        - tapon_recibido
+        - falta_personal
+        - falta_recibida
+
+    TipoFalta:
+      type: string
+      enum:
+        - personal
+        - tecnica
+        - antideportiva
+        - descalificante
+
+    MetricaRanking:
+      type: string
+      enum:
+        - puntos
+        - puntos_por_partido
+        - rebotes
+        - rebotes_por_partido
+        - asistencias
+        - asistencias_por_partido
+        - robos
+        - robos_por_partido
+        - tapones
+        - tapones_por_partido
+        - valoracion
+        - valoracion_por_partido
+        - porcentaje_tiros_2
+        - porcentaje_tiros_3
+        - porcentaje_tiros_libres
+        - porcentaje_tiros_campo
+        - porcentaje_tiro_efectivo
+        - true_shooting
+        - mas_menos
+
+    EventoEstadisticoCreate:
+      type: object
+      required:
+        - clientEventoId
+        - tipo
+        - periodo
+      properties:
+        clientEventoId:
+          type: string
+          maxLength: 100
+          description: >
+            Identificador generado por el cliente para impedir duplicados
+            cuando se reintenta una petición.
+          example: tablet-01-evt-000438
+        tipo:
+          $ref: '#/components/schemas/TipoEventoEstadistico'
+        jugadorId:
+          type: string
+          format: uuid
+          nullable: true
+          description: >
+            Jugador al que se atribuye la acción. Puede ser null en eventos
+            generales como inicio o fin de periodo.
+        jugadorRelacionadoId:
+          type: string
+          format: uuid
+          nullable: true
+          description: >
+            Segundo jugador relacionado con la acción cuando resulte útil
+            para enlazar una misma jugada.
+        jugadaId:
+          type: string
+          nullable: true
+          maxLength: 100
+          description: Identificador opcional que permite agrupar varios eventos de una misma jugada
+        periodo:
+          type: integer
+          minimum: 1
+          maximum: 10
+          description: 1-4 para cuartos reglamentarios; 5 o superior para prórrogas
+          example: 3
+        segundosRestantes:
+          type: integer
+          minimum: 0
+          maximum: 600
+          description: Segundos restantes en el periodo
+          example: 247
+        tipoFalta:
+          allOf:
+            - $ref: '#/components/schemas/TipoFalta'
+          nullable: true
+        observaciones:
+          type: string
+          maxLength: 500
+          nullable: true
+
+    EventoEstadistico:
+      allOf:
+        - $ref: '#/components/schemas/EventoEstadisticoCreate'
+        - type: object
+          required:
+            - eventoId
+            - partidoId
+            - registradoEn
+            - anulado
+          properties:
+            eventoId:
+              type: string
+              format: uuid
+            partidoId:
+              type: string
+              format: uuid
+            registradoEn:
+              type: string
+              format: date-time
+            anulado:
+              type: boolean
+              default: false
+            anuladoEn:
+              type: string
+              format: date-time
+              nullable: true
+
+    EstadisticaJugadorPartidoBase:
+      type: object
+      properties:
+        titular:
+          type: boolean
+          default: false
+
+        segundosJugados:
+          type: integer
+          minimum: 0
+          description: Tiempo efectivo disputado por el jugador expresado en segundos
+          example: 1663
+
+        puntos:
+          type: integer
+          minimum: 0
+          example: 18
+
+        tiros2Anotados:
+          type: integer
+          minimum: 0
+          example: 5
+        tiros2Intentados:
+          type: integer
+          minimum: 0
+          example: 9
+        tiros3Anotados:
+          type: integer
+          minimum: 0
+          example: 2
+        tiros3Intentados:
+          type: integer
+          minimum: 0
+          example: 6
+        tirosLibresAnotados:
+          type: integer
+          minimum: 0
+          example: 2
+        tirosLibresIntentados:
+          type: integer
+          minimum: 0
+          example: 3
+
+        rebotesOfensivos:
+          type: integer
+          minimum: 0
+          example: 2
+        rebotesDefensivos:
+          type: integer
+          minimum: 0
+          example: 5
+        rebotesTotales:
+          type: integer
+          minimum: 0
+          readOnly: true
+          description: rebotesOfensivos + rebotesDefensivos
+          example: 7
+
+        asistencias:
+          type: integer
+          minimum: 0
+          example: 6
+        robos:
+          type: integer
+          minimum: 0
+          example: 2
+        perdidas:
+          type: integer
+          minimum: 0
+          example: 3
+        tapones:
+          type: integer
+          minimum: 0
+          example: 1
+        taponesRecibidos:
+          type: integer
+          minimum: 0
+          example: 0
+
+        faltasCometidas:
+          type: integer
+          minimum: 0
+          maximum: 5
+          example: 3
+        faltasRecibidas:
+          type: integer
+          minimum: 0
+          example: 4
+
+        masMenos:
+          type: integer
+          description: >
+            Diferencia de puntos del equipo mientras el jugador estuvo en pista.
+          example: 8
+
+        valoracion:
+          type: number
+          format: float
+          readOnly: true
+          description: >
+            Valoración calculada por el servicio a partir de las estadísticas
+            positivas y negativas configuradas.
+          example: 22
+
+    EstadisticaJugadorPartidoUpdate:
+      allOf:
+        - $ref: '#/components/schemas/EstadisticaJugadorPartidoBase'
+
+    EstadisticaJugadorPartido:
+      allOf:
+        - type: object
+          required:
+            - partidoId
+            - jugadorId
+            - puntos
+          properties:
+            partidoId:
+              type: string
+              format: uuid
+            jugadorId:
+              type: string
+              format: uuid
+            temporada:
+              type: string
+              example: '2026-2027'
+            competicion:
+              type: string
+              example: Liga regular
+            jornada:
+              type: integer
+              nullable: true
+              example: 8
+            fechaHora:
+              type: string
+              format: date-time
+              nullable: true
+        - $ref: '#/components/schemas/EstadisticaJugadorPartidoBase'
+        - type: object
+          properties:
+            tirosCampoAnotados:
+              type: integer
+              minimum: 0
+              readOnly: true
+              description: tiros2Anotados + tiros3Anotados
+            tirosCampoIntentados:
+              type: integer
+              minimum: 0
+              readOnly: true
+              description: tiros2Intentados + tiros3Intentados
+            porcentajes:
+              $ref: '#/components/schemas/PorcentajesTiro'
+            metricasAvanzadas:
+              $ref: '#/components/schemas/MetricasAvanzadas'
+
+    EstadisticasPartidoUpdate:
+      type: object
+      required:
+        - jugadores
+      properties:
+        periodoActual:
+          type: integer
+          minimum: 1
+          maximum: 10
+          nullable: true
+        segundosRestantesPeriodo:
+          type: integer
+          minimum: 0
+          maximum: 600
+          nullable: true
+        jugadores:
+          type: array
+          items:
+            type: object
+            required:
+              - jugadorId
+              - estadisticas
+            properties:
+              jugadorId:
+                type: string
+                format: uuid
+              estadisticas:
+                $ref: '#/components/schemas/EstadisticaJugadorPartidoUpdate'
+
+    EstadisticasPartido:
+      type: object
+      required:
+        - partidoId
+        - estadoSeguimiento
+        - jugadores
+        - actualizadoEn
+      properties:
+        partidoId:
+          type: string
+          format: uuid
+        temporada:
+          type: string
+          example: '2026-2027'
+        estadoSeguimiento:
+          $ref: '#/components/schemas/EstadoSeguimientoPartido'
+        periodoActual:
+          type: integer
+          minimum: 1
+          maximum: 10
+          nullable: true
+        segundosRestantesPeriodo:
+          type: integer
+          minimum: 0
+          maximum: 600
+          nullable: true
+        jugadores:
+          type: array
+          items:
+            $ref: '#/components/schemas/EstadisticaJugadorPartido'
+        actualizadoEn:
+          type: string
+          format: date-time
+
+    PorcentajesTiro:
+      type: object
+      readOnly: true
+      properties:
+        tiros2:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 100
+          example: 55.6
+        tiros3:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 100
+          example: 33.3
+        tirosLibres:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 100
+          example: 66.7
+        tirosCampo:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 100
+          example: 46.7
+
+    MetricasAvanzadas:
+      type: object
+      readOnly: true
+      description: Métricas calculadas automáticamente cuando existen datos suficientes
+      properties:
+        porcentajeTiroEfectivo:
+          type: number
+          format: float
+          nullable: true
+          description: eFG%
+          example: 53.3
+        trueShooting:
+          type: number
+          format: float
+          nullable: true
+          description: TS%
+          example: 57.8
+        ratioAsistenciasPerdidas:
+          type: number
+          format: float
+          nullable: true
+          example: 2.0
+
+    TotalesTemporada:
+      type: object
+      properties:
+        segundosJugados:
+          type: integer
+          minimum: 0
+        puntos:
+          type: integer
+          minimum: 0
+        tiros2Anotados:
+          type: integer
+          minimum: 0
+        tiros2Intentados:
+          type: integer
+          minimum: 0
+        tiros3Anotados:
+          type: integer
+          minimum: 0
+        tiros3Intentados:
+          type: integer
+          minimum: 0
+        tirosLibresAnotados:
+          type: integer
+          minimum: 0
+        tirosLibresIntentados:
+          type: integer
+          minimum: 0
+        rebotesOfensivos:
+          type: integer
+          minimum: 0
+        rebotesDefensivos:
+          type: integer
+          minimum: 0
+        rebotesTotales:
+          type: integer
+          minimum: 0
+        asistencias:
+          type: integer
+          minimum: 0
+        robos:
+          type: integer
+          minimum: 0
+        perdidas:
+          type: integer
+          minimum: 0
+        tapones:
+          type: integer
+          minimum: 0
+        taponesRecibidos:
+          type: integer
+          minimum: 0
+        faltasCometidas:
+          type: integer
+          minimum: 0
+        faltasRecibidas:
+          type: integer
+          minimum: 0
+        masMenos:
+          type: integer
+        valoracion:
+          type: number
+          format: float
+
+    PromediosTemporada:
+      type: object
+      properties:
+        minutosPorPartido:
+          type: number
+          format: float
+          example: 27.7
+        puntosPorPartido:
+          type: number
+          format: float
+          example: 14.8
+        rebotesPorPartido:
+          type: number
+          format: float
+          example: 6.1
+        asistenciasPorPartido:
+          type: number
+          format: float
+          example: 4.3
+        robosPorPartido:
+          type: number
+          format: float
+          example: 1.4
+        perdidasPorPartido:
+          type: number
+          format: float
+          example: 2.2
+        taponesPorPartido:
+          type: number
+          format: float
+          example: 0.7
+        faltasPorPartido:
+          type: number
+          format: float
+          example: 2.5
+        masMenosPorPartido:
+          type: number
+          format: float
+          example: 4.1
+        valoracionPorPartido:
+          type: number
+          format: float
+          example: 18.3
+
+    EstadisticasJugadorTemporada:
+      type: object
+      required:
+        - jugadorId
+        - temporada
+        - partidosJugados
+        - totales
+        - promedios
+        - porcentajes
+      properties:
+        jugadorId:
+          type: string
+          format: uuid
+        temporada:
+          type: string
+          example: '2026-2027'
+        competicion:
+          type: string
+          nullable: true
+        partidosJugados:
+          type: integer
+          minimum: 0
+        titularidades:
+          type: integer
+          minimum: 0
+        totales:
+          $ref: '#/components/schemas/TotalesTemporada'
+        promedios:
+          $ref: '#/components/schemas/PromediosTemporada'
+        porcentajes:
+          $ref: '#/components/schemas/PorcentajesTiro'
+        metricasAvanzadas:
+          $ref: '#/components/schemas/MetricasAvanzadas'
+        detallePartidos:
+          type: array
+          description: Solo se devuelve cuando incluirPartidos=true
+          items:
+            $ref: '#/components/schemas/EstadisticaJugadorPartido'
+
+    PosicionRanking:
+      type: object
+      required:
+        - posicion
+        - jugadorId
+        - valor
+      properties:
+        posicion:
+          type: integer
+          minimum: 1
+          example: 1
+        jugadorId:
+          type: string
+          format: uuid
+        valor:
+          type: number
+          format: float
+          example: 18.7
+        partidosJugados:
+          type: integer
+          minimum: 0
+
+    RankingEstadistico:
+      type: object
+      required:
+        - temporada
+        - metrica
+        - jugadores
+      properties:
+        temporada:
+          type: string
+          example: '2026-2027'
+        competicion:
+          type: string
+          nullable: true
+        metrica:
+          $ref: '#/components/schemas/MetricaRanking'
+        jugadores:
+          type: array
+          items:
+            $ref: '#/components/schemas/PosicionRanking'

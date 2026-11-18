@@ -1,0 +1,674 @@
+openapi: 3.0.3
+info:
+  title: API Institucional
+  description: >
+    Microservicio con la identidad y el funcionamiento institucional del club:
+    historia, palmarés, escudo y colores, junta directiva, instalaciones,
+    cantera y patrocinadores. No realiza llamadas síncronas a otros
+    microservicios. Contenido de lectura pública; la edición es solo para
+    staff y admin. El vínculo entre un patrocinador y un producto patrocinado
+    es una referencia de solo lectura (patrocinadorId) consumida por Compras,
+    no una llamada en tiempo real. Se accede siempre a través del API Gateway.
+  version: 1.0.0
+
+servers:
+  - url: https://api.club.example/institucional/v1
+    description: Servidor de producción (vía API Gateway)
+  - url: http://localhost:8086/v1
+    description: Entorno local de desarrollo
+
+tags:
+  - name: Club
+    description: Historia, identidad, junta e instalaciones
+  - name: Palmarés
+    description: Trofeos y títulos
+  - name: Cantera
+    description: Categorías inferiores
+  - name: Patrocinadores
+    description: Gestión de sponsors
+
+paths:
+  /club/historia:
+    get:
+      tags: [Club]
+      summary: Historia del club
+      operationId: obtenerHistoria
+      security: []
+      responses:
+        '200':
+          description: Texto de la historia
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Historia'
+    put:
+      tags: [Club]
+      summary: Editar la historia (staff/admin)
+      operationId: actualizarHistoria
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Historia'
+      responses:
+        '200':
+          description: Historia actualizada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Historia'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /club/identidad:
+    get:
+      tags: [Club]
+      summary: Escudo y colores oficiales
+      operationId: obtenerIdentidad
+      security: []
+      responses:
+        '200':
+          description: Identidad visual del club
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Identidad'
+    put:
+      tags: [Club]
+      summary: Editar escudo y colores (admin)
+      operationId: actualizarIdentidad
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Identidad'
+      responses:
+        '200':
+          description: Identidad actualizada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Identidad'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /club/junta:
+    get:
+      tags: [Club]
+      summary: Composición de la junta directiva
+      operationId: listarJunta
+      security: []
+      responses:
+        '200':
+          description: Miembros de la junta
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MiembroJunta'
+    put:
+      tags: [Club]
+      summary: Reemplazar la composición de la junta (admin)
+      operationId: actualizarJunta
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/MiembroJunta'
+      responses:
+        '200':
+          description: Junta actualizada
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MiembroJunta'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /club/instalaciones:
+    get:
+      tags: [Club]
+      summary: Instalaciones y cómo llegar
+      description: >
+        Cubre, junto con el mapa de asientos de Entradas, el concepto
+        "Espacios" del enunciado: aquí se modela el espacio físico del club
+        en sentido institucional (pabellón, dirección, fotos), mientras que
+        Entradas modela el aforo y los asientos ligados a cada partido.
+      operationId: listarInstalaciones
+      security: []
+      responses:
+        '200':
+          description: Instalaciones del club
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Instalacion'
+    post:
+      tags: [Club]
+      summary: Añadir una instalación (staff/admin)
+      operationId: crearInstalacion
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Instalacion'
+      responses:
+        '201':
+          description: Instalación creada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Instalacion'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /club/palmares:
+    get:
+      tags: [Palmarés]
+      summary: Palmarés y trofeos
+      operationId: listarPalmares
+      security: []
+      responses:
+        '200':
+          description: Títulos conseguidos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Titulo'
+    post:
+      tags: [Palmarés]
+      summary: Añadir un título (staff/admin)
+      operationId: crearTitulo
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TituloCreate'
+      responses:
+        '201':
+          description: Título añadido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Titulo'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /club/palmares/{tituloId}:
+    parameters:
+      - name: tituloId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    put:
+      tags: [Palmarés]
+      summary: Editar un título (staff/admin)
+      operationId: actualizarTitulo
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TituloCreate'
+      responses:
+        '200':
+          description: Título actualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Titulo'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [Palmarés]
+      summary: Eliminar un título (admin)
+      operationId: eliminarTitulo
+      security:
+        - bearerAuth: []
+      responses:
+        '204':
+          description: Título eliminado
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /club/cantera:
+    get:
+      tags: [Cantera]
+      summary: Categorías de cantera
+      operationId: listarCantera
+      security: []
+      responses:
+        '200':
+          description: Categorías inferiores del club
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CategoriaCantera'
+    post:
+      tags: [Cantera]
+      summary: Añadir una categoría (staff/admin)
+      operationId: crearCategoriaCantera
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategoriaCantera'
+      responses:
+        '201':
+          description: Categoría creada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CategoriaCantera'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /patrocinadores:
+    get:
+      tags: [Patrocinadores]
+      summary: Listar patrocinadores
+      description: >
+        Recurso consultado por Compras para mostrar los productos de un
+        patrocinador; la relación se resuelve por referencia (patrocinadorId
+        almacenado en el producto), no mediante llamada síncrona en cada
+        petición.
+      operationId: listarPatrocinadores
+      security: []
+      parameters:
+        - name: nivel
+          in: query
+          schema:
+            $ref: '#/components/schemas/NivelPatrocinio'
+      responses:
+        '200':
+          description: Patrocinadores del club
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Patrocinador'
+    post:
+      tags: [Patrocinadores]
+      summary: Dar de alta un patrocinador (admin)
+      operationId: crearPatrocinador
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatrocinadorCreate'
+      responses:
+        '201':
+          description: Patrocinador creado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Patrocinador'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /patrocinadores/{patrocinadorId}:
+    parameters:
+      - $ref: '#/components/parameters/PatrocinadorId'
+    get:
+      tags: [Patrocinadores]
+      summary: Obtener un patrocinador
+      operationId: obtenerPatrocinador
+      security: []
+      responses:
+        '200':
+          description: Patrocinador
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Patrocinador'
+        '404':
+          description: >
+            No existe ningún patrocinador con el identificador indicado. Es
+            el 404 que recibirá Compras si el patrocinadorId de un producto
+            no existe en este servicio.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    put:
+      tags: [Patrocinadores]
+      summary: Editar un patrocinador (admin)
+      operationId: actualizarPatrocinador
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatrocinadorCreate'
+      responses:
+        '200':
+          description: Patrocinador actualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Patrocinador'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [Patrocinadores]
+      summary: Eliminar un patrocinador (admin)
+      operationId: eliminarPatrocinador
+      security:
+        - bearerAuth: []
+      responses:
+        '204':
+          description: Patrocinador eliminado
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Token JWT con expiración, validado por el API Gateway.
+
+  parameters:
+    PatrocinadorId:
+      name: patrocinadorId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  responses:
+    BadRequest:
+      description: Petición mal formada o datos no válidos
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: Token ausente, inválido o caducado
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Forbidden:
+      description: El rol del usuario no tiene permisos para esta operación
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Recurso no encontrado
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  schemas:
+    Error:
+      type: object
+      required: [codigo, mensaje]
+      properties:
+        codigo:
+          type: integer
+          example: 404
+        mensaje:
+          type: string
+          example: Recurso no encontrado
+        detalles:
+          type: array
+          items:
+            type: string
+
+    NivelPatrocinio:
+      type: string
+      enum: [principal, oro, plata, bronce, colaborador]
+
+    Historia:
+      type: object
+      required: [texto]
+      properties:
+        texto:
+          type: string
+        fechaFundacion:
+          type: string
+          format: date
+        hitos:
+          type: array
+          items:
+            type: object
+            required: [anio, descripcion]
+            properties:
+              anio:
+                type: integer
+                example: 1985
+              descripcion:
+                type: string
+
+    Identidad:
+      type: object
+      required: [nombreOficial, coloresOficiales]
+      properties:
+        nombreOficial:
+          type: string
+        escudoUrl:
+          type: string
+          format: uri
+        coloresOficiales:
+          type: array
+          items:
+            type: string
+            pattern: '^#[0-9A-Fa-f]{6}$'
+            example: '#0B5FA5'
+
+    MiembroJunta:
+      type: object
+      required: [nombre, cargo]
+      properties:
+        nombre:
+          type: string
+        cargo:
+          type: string
+          example: Presidente
+        fotoUrl:
+          type: string
+          format: uri
+
+    Instalacion:
+      type: object
+      required: [nombre, direccion]
+      properties:
+        instalacionId:
+          type: string
+          format: uuid
+        nombre:
+          type: string
+          example: Pabellón Municipal
+        direccion:
+          type: string
+        comoLlegar:
+          type: string
+        capacidad:
+          type: integer
+        fotos:
+          type: array
+          items:
+            type: string
+            format: uri
+        latitud:
+          type: number
+          format: double
+        longitud:
+          type: number
+          format: double
+
+    Titulo:
+      type: object
+      required: [tituloId, competicion, temporada]
+      properties:
+        tituloId:
+          type: string
+          format: uuid
+        competicion:
+          type: string
+          example: Campeón de liga regional
+        temporada:
+          type: string
+          example: 2018-2019
+        descripcion:
+          type: string
+        fotoUrl:
+          type: string
+          format: uri
+
+    TituloCreate:
+      type: object
+      required: [competicion, temporada]
+      properties:
+        competicion:
+          type: string
+        temporada:
+          type: string
+        descripcion:
+          type: string
+        fotoUrl:
+          type: string
+          format: uri
+
+    CategoriaCantera:
+      type: object
+      required: [nombre]
+      properties:
+        categoriaId:
+          type: string
+          format: uuid
+        nombre:
+          type: string
+          example: Cadete
+        edades:
+          type: string
+          example: 14-15 años
+        entrenador:
+          type: string
+        horarios:
+          type: string
+
+    Patrocinador:
+      type: object
+      required: [patrocinadorId, nombre, nivel]
+      properties:
+        patrocinadorId:
+          type: string
+          format: uuid
+        nombre:
+          type: string
+        logoUrl:
+          type: string
+          format: uri
+        enlace:
+          type: string
+          format: uri
+        nivel:
+          $ref: '#/components/schemas/NivelPatrocinio'
+
+    PatrocinadorCreate:
+      type: object
+      required: [nombre, nivel]
+      properties:
+        nombre:
+          type: string
+        logoUrl:
+          type: string
+          format: uri
+        enlace:
+          type: string
+          format: uri
+        nivel:
+          $ref: '#/components/schemas/NivelPatrocinio'

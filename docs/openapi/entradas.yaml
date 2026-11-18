@@ -1,0 +1,590 @@
+openapi: 3.0.3
+info:
+  title: API de Entradas
+  description: >
+    Microservicio de venta y control de acceso a los partidos: mapa de asientos,
+    aforo, reservas temporales y compra de entradas. Realiza dos llamadas
+    síncronas a otros microservicios:
+
+    Entradas -> Deportivo -> GET /partidos/{partidoId} (para comprobar que el
+    partido existe y tiene la venta abierta)
+
+    Entradas -> Usuarios -> GET /usuarios/{usuarioId}/socio (para aplicar el
+    descuento de socio al comprar)
+
+    Se accede siempre a través del API Gateway.
+  version: 1.0.0
+
+servers:
+  - url: https://api.club.example/entradas/v1
+    description: Servidor de producción (vía API Gateway)
+  - url: http://localhost:8083/v1
+    description: Entorno local de desarrollo
+
+tags:
+  - name: Asientos
+    description: Mapa de asientos, precios y aforo
+  - name: Reservas
+    description: Bloqueo temporal de asientos antes del pago
+  - name: Entradas
+    description: Compra, consulta y anulación de entradas
+  - name: Acceso
+    description: Control de acceso al estadio
+
+paths:
+  /partidos/{partidoId}/asientos:
+    parameters:
+      - $ref: '#/components/parameters/PartidoId'
+    get:
+      tags: [Asientos]
+      summary: Mapa de asientos de un partido
+      operationId: listarAsientos
+      security: []
+      parameters:
+        - name: zona
+          in: query
+          schema:
+            type: string
+            example: A
+        - name: estado
+          in: query
+          schema:
+            $ref: '#/components/schemas/EstadoAsiento'
+      responses:
+        '200':
+          description: Asientos del partido con su estado
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Asiento'
+        '404':
+          description: No existe ningún partido con ese identificador en este servicio.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /partidos/{partidoId}/aforo:
+    parameters:
+      - $ref: '#/components/parameters/PartidoId'
+    get:
+      tags: [Asientos]
+      summary: Aforo y ocupación de un partido
+      operationId: obtenerAforo
+      security: []
+      responses:
+        '200':
+          description: Aforo total y cantidad ocupada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Aforo'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /partidos/{partidoId}/precios:
+    parameters:
+      - $ref: '#/components/parameters/PartidoId'
+    get:
+      tags: [Asientos]
+      summary: Precios por zona y tipo de entrada
+      operationId: listarPrecios
+      security: []
+      responses:
+        '200':
+          description: Tarifas del partido
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Precio'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /reservas:
+    post:
+      tags: [Reservas]
+      summary: Reservar asientos temporalmente
+      description: >
+        Bloquea los asientos unos minutos mientras el usuario completa el pago.
+
+        Antes de crear la reserva, este servicio consulta al microservicio
+        Deportivo mediante GET /partidos/{partidoId} para comprobar que el
+        partido existe y tiene la venta de entradas abierta. Se trata, por
+        tanto, de una COMUNICACIÓN SÍNCRONA de tipo CONSULTA:
+
+        Entradas -> Deportivo -> GET /partidos/{partidoId}
+      operationId: crearReserva
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReservaCreate'
+      responses:
+        '201':
+          description: Reserva creada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Reserva'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: >
+            El partido indicado no existe, o no tiene la venta de entradas
+            abierta. Este error puede producirse como resultado de la
+            consulta realizada a Deportivo, o porque alguno de los asientos
+            solicitados no existe en ese partido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Alguno de los asientos ya no está libre
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: >
+            No se ha podido comprobar el partido porque el microservicio
+            Deportivo no está disponible.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /reservas/{reservaId}:
+    parameters:
+      - $ref: '#/components/parameters/ReservaId'
+    get:
+      tags: [Reservas]
+      summary: Consultar una reserva
+      operationId: obtenerReserva
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Reserva
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Reserva'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [Reservas]
+      summary: Cancelar una reserva y liberar los asientos
+      operationId: cancelarReserva
+      security:
+        - bearerAuth: []
+      responses:
+        '204':
+          description: Reserva cancelada
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /entradas:
+    post:
+      tags: [Entradas]
+      summary: Comprar entradas a partir de una reserva
+      description: >
+        Procesa el pago y emite las entradas asociadas a una reserva vigente.
+
+        Antes de calcular el precio final, este servicio consulta al
+        microservicio Usuarios mediante GET /usuarios/{usuarioId}/socio
+        para saber si debe aplicarse el descuento de socio. Se trata de una
+        COMUNICACIÓN SÍNCRONA de tipo CONSULTA:
+
+        Entradas -> Usuarios -> GET /usuarios/{usuarioId}/socio
+
+        Tras la compra, se publica en el Message Broker el evento asíncrono
+        "entrada comprada", que consume Usuarios para añadir la actividad al
+        historial del comprador.
+      operationId: comprarEntradas
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompraEntradas'
+      responses:
+        '201':
+          description: Compra realizada
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Entrada'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '402':
+          description: El pago ha sido rechazado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: >
+            La reserva indicada no existe, o el usuario de la reserva no
+            existe según la consulta realizada a Usuarios.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '410':
+          description: La reserva ha caducado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: >
+            No se ha podido comprobar el estado de socio del comprador porque
+            el microservicio Usuarios no está disponible.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    get:
+      tags: [Entradas]
+      summary: Listar las entradas de un usuario
+      operationId: listarEntradas
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: usuarioId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: partidoId
+          in: query
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Entradas del usuario
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Entrada'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /entradas/{entradaId}:
+    parameters:
+      - $ref: '#/components/parameters/EntradaId'
+    get:
+      tags: [Entradas]
+      summary: Obtener una entrada (con su código QR)
+      operationId: obtenerEntrada
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Entrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Entrada'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [Entradas]
+      summary: Anular una entrada (staff/admin)
+      operationId: anularEntrada
+      security:
+        - bearerAuth: []
+      responses:
+        '204':
+          description: Entrada anulada y asiento liberado
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /entradas/{entradaId}/validacion:
+    parameters:
+      - $ref: '#/components/parameters/EntradaId'
+    post:
+      tags: [Acceso]
+      summary: Validar una entrada en el acceso al estadio (staff)
+      operationId: validarEntrada
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Entrada válida; queda marcada como usada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Entrada'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: La entrada ya fue usada o está anulada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Token JWT con expiración, validado por el API Gateway.
+
+  parameters:
+    PartidoId:
+      name: partidoId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    ReservaId:
+      name: reservaId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    EntradaId:
+      name: entradaId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  responses:
+    BadRequest:
+      description: Petición mal formada o datos no válidos
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: Token ausente, inválido o caducado
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Forbidden:
+      description: El rol del usuario no tiene permisos para esta operación
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Recurso no encontrado
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  schemas:
+    Error:
+      type: object
+      required: [codigo, mensaje]
+      properties:
+        codigo:
+          type: integer
+          example: 404
+        mensaje:
+          type: string
+          example: Recurso no encontrado
+        detalles:
+          type: array
+          items:
+            type: string
+
+    EstadoAsiento:
+      type: string
+      enum: [libre, reservado, ocupado]
+
+    TipoEntrada:
+      type: string
+      enum: [general, socio, vip]
+
+    MetodoPago:
+      type: string
+      enum: [tarjeta, bizum, paypal]
+
+    Asiento:
+      type: object
+      required: [asientoId, zona, fila, numero, estado]
+      properties:
+        asientoId:
+          type: string
+          format: uuid
+        zona:
+          type: string
+          example: A
+        fila:
+          type: integer
+          example: 3
+        numero:
+          type: integer
+          example: 12
+        estado:
+          $ref: '#/components/schemas/EstadoAsiento'
+
+    Aforo:
+      type: object
+      required: [partidoId, capacidadTotal, ocupados]
+      properties:
+        partidoId:
+          type: string
+          format: uuid
+        capacidadTotal:
+          type: integer
+          example: 600
+        ocupados:
+          type: integer
+          example: 412
+        reservados:
+          type: integer
+          example: 8
+        libres:
+          type: integer
+          example: 180
+
+    Precio:
+      type: object
+      required: [zona, tipoEntrada, precio]
+      properties:
+        zona:
+          type: string
+        tipoEntrada:
+          $ref: '#/components/schemas/TipoEntrada'
+        precio:
+          type: number
+          format: float
+          example: 8.5
+
+    ReservaCreate:
+      type: object
+      required: [partidoId, asientos]
+      properties:
+        partidoId:
+          type: string
+          format: uuid
+        asientos:
+          type: array
+          minItems: 1
+          maxItems: 10
+          items:
+            type: string
+            format: uuid
+          description: Identificadores de los asientos a reservar
+
+    Reserva:
+      type: object
+      required: [reservaId, partidoId, usuarioId, asientos, expiraEn]
+      properties:
+        reservaId:
+          type: string
+          format: uuid
+        partidoId:
+          type: string
+          format: uuid
+        usuarioId:
+          type: string
+          format: uuid
+        asientos:
+          type: array
+          items:
+            $ref: '#/components/schemas/Asiento'
+        expiraEn:
+          type: string
+          format: date-time
+          description: Momento en que se liberan los asientos si no se paga
+
+    CompraEntradas:
+      type: object
+      required: [reservaId, tipoEntrada, metodoPago]
+      properties:
+        reservaId:
+          type: string
+          format: uuid
+        tipoEntrada:
+          $ref: '#/components/schemas/TipoEntrada'
+        metodoPago:
+          $ref: '#/components/schemas/MetodoPago'
+
+    Entrada:
+      type: object
+      required: [entradaId, partidoId, usuarioId, asiento, tipoEntrada, precioPagado, estado]
+      properties:
+        entradaId:
+          type: string
+          format: uuid
+        partidoId:
+          type: string
+          format: uuid
+        usuarioId:
+          type: string
+          format: uuid
+        asiento:
+          $ref: '#/components/schemas/Asiento'
+        tipoEntrada:
+          $ref: '#/components/schemas/TipoEntrada'
+        precioPagado:
+          type: number
+          format: float
+        descuentoAplicado:
+          type: number
+          description: Porcentaje de descuento de socio aplicado
+          example: 15
+        metodoPago:
+          $ref: '#/components/schemas/MetodoPago'
+        codigoQr:
+          type: string
+          description: Código para el control de acceso
+        estado:
+          type: string
+          enum: [valida, usada, anulada]
+        fechaCompra:
+          type: string
+          format: date-time
