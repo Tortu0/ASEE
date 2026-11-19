@@ -13,6 +13,7 @@ server:
     context-path: /v1
 
 app:
+  datos-ejemplo: ${DATOS_EJEMPLO:false}
   allowed-origins: ${ALLOWED_ORIGINS:http://localhost:*,http://127.0.0.1:*}
   security:
     public-key: ${JWT_PUBLIC_KEY:}

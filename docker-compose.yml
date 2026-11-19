@@ -121,6 +121,7 @@ services:
       - MONGODB_URI=mongodb://mongo:27017/?replicaSet=asee-local&directConnection=true&serverSelectionTimeoutMS=3000&connectTimeoutMS=3000
       - JWT_SECRET=${JWT_SECRET}
       - DEPORTIVO_BASE_URL=http://deportivo:8082/v1
+      - DATOS_EJEMPLO=true
     depends_on:
       mongo:
         condition: service_healthy

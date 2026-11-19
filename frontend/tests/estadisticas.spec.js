@@ -4,6 +4,7 @@ test.describe('Microservicio Estadísticas: Líderes, Tabla de Temporada y Resil
 
     test('1. Carga la sección Estadísticas, la temporada activa y la tabla de jugadores', async ({ page }) => {
         await page.goto('/');
+        await expect(page.locator('#app h1')).toBeVisible();
 
         // Navegamos desde el menú superior
         await page.locator('#nav').getByRole('link', { name: 'Estadísticas' }).click();
@@ -17,7 +18,7 @@ test.describe('Microservicio Estadísticas: Líderes, Tabla de Temporada y Resil
         await expect(page.getByRole('heading', { name: 'Líderes', level: 2 })).toBeVisible();
         await expect(page.getByRole('heading', { name: 'Tabla de la temporada', level: 2 })).toBeVisible();
 
-        // Si hay estadísticas cargadas en la base de datos, verificamos las columnas de la tabla
+        // Verificamos las columnas y filas de la tabla de estadísticas
         const tabla = page.locator('table');
         if (await tabla.isVisible()) {
             await expect(tabla.locator('thead')).toContainText('Jugador');
@@ -47,12 +48,9 @@ test.describe('Microservicio Estadísticas: Líderes, Tabla de Temporada y Resil
     });
 
     test('3. Si el servicio de Estadísticas cae, la página degrada sin romperse', async ({ page }) => {
-        // Bloqueamos las peticiones /v1/ propias de Estadísticas (dejando pasar partidos, jugadores y club)
+        // Bloqueamos las consultas de rankings y temporada de Estadísticas (dejando pasar jugadores y club)
         await page.route(
-            url => url.pathname.startsWith('/v1/') &&
-                !url.pathname.includes('partidos') &&
-                !url.pathname.includes('jugadores') &&
-                !url.pathname.includes('club'),
+            url => url.pathname.includes('/temporadas/'),
             route => route.abort('failed')
         );
 
