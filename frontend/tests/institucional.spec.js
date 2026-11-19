@@ -12,6 +12,7 @@ test.describe('Microservicio Institucional: Identidad Global y Vista del Club', 
 
     test('2. Navega a El club y renderiza las seis secciones institucionales', async ({ page }) => {
         await page.goto('/');
+        await expect(page.locator('#app h1')).toBeVisible();
 
         await page.locator('#nav').getByRole('link', { name: 'El club' }).click();
         await expect(page).toHaveURL(/#\/club$/);
@@ -39,8 +40,9 @@ test.describe('Microservicio Institucional: Identidad Global y Vista del Club', 
         // Simulamos caída completa del microservicio Institucional
         await page.route('**/v1/club/**', route => route.abort('failed'));
 
-        // Al abrir la portada, main.js debe aplicar el respaldo 'CB Madroñera' sin romper la web
+        // Al abrir la portada, esperamos a que termine de renderizar antes de cambiar de vista
         await page.goto('/');
+        await expect(page.locator('#app h1')).toBeVisible();
         await expect(page.locator('#marca')).toHaveText('CB Madroñera');
 
         // Al entrar en #/club, route() debe capturar el fallo y mostrar un aviso con role="alert"
