@@ -46,7 +46,8 @@ test.describe('Microservicio Entradas: Mapa de asientos, Reservas y Compra con Q
     test('2. Reservar un asiento y cancelar la reserva libera el panel', async ({ page }) => {
         await registrarUsuarioLimpio(page);
 
-        await page.goto('/#/partidos');
+        // Navegamos desde el menú superior para no recargar la página completa
+        await page.locator('#nav').getByRole('link', { name: 'Partidos' }).click();
         await page.locator('a[href^="#/entradas/"]').first().click();
 
         // Seleccionamos un asiento libre y pulsamos "Reservar 1 asiento"
@@ -66,7 +67,8 @@ test.describe('Microservicio Entradas: Mapa de asientos, Reservas y Compra con Q
     test('3. Flujo completo de compra genera la entrada con QR y la guarda en Mi cuenta', async ({ page }) => {
         await registrarUsuarioLimpio(page);
 
-        await page.goto('/#/partidos');
+        // Navegamos desde el menú superior para no recargar la página completa
+        await page.locator('#nav').getByRole('link', { name: 'Partidos' }).click();
         await page.locator('a[href^="#/entradas/"]').first().click();
 
         // 1. Seleccionar asiento y reservar

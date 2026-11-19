@@ -19,7 +19,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        servicio: [usuarios, compras, deportivo, entradas, estadisticas, institucional]
+        servicio: [ usuarios, compras, deportivo, entradas, estadisticas, institucional ]
 
     steps:
       - name: Descargar código
@@ -81,9 +81,9 @@ jobs:
             if curl -sf http://localhost:8080/ > /dev/null && \
                curl -sf http://localhost:8080/deportivo/v1/partidos > /dev/null && \
                curl -sf http://localhost:8080/institucional/v1/club/identidad > /dev/null && \
+               curl -sf http://localhost:8080/entradas/v1/partidos/20000000-0000-0000-0000-000000000004/aforo > /dev/null && \
+               curl -sf http://localhost:8080/compras/v1/productos > /dev/null && \
                curl -s -o /dev/null http://localhost:8081 && \
-               curl -s -o /dev/null http://localhost:8083 && \
-               curl -s -o /dev/null http://localhost:8084 && \
                curl -s -o /dev/null http://localhost:8085; then
               echo "Todos los servicios operativos."
               exit 0
