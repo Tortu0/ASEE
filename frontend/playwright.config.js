@@ -3,11 +3,11 @@ import { defineConfig, devices } from '@playwright/test';
 export default defineConfig({
   testDir: './tests',
   fullyParallel: false,
-  workers: process.env.CI ? 1 : undefined,
+  workers: 1,
   retries: 0,
   reporter: 'html',
   expect: {
-    timeout: process.env.CI ? 10000 : 5000,
+    timeout: 10000,
   },
   use: {
     baseURL: 'http://localhost:8080',
