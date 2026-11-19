@@ -119,17 +119,30 @@ independientemente del Gateway REST. Véase [el protocolo y ejemplo de cliente](
 
 ## Pruebas
 
-Sin servidores: ` .\mvnw.cmd test ` ejecuta 57 pruebas; omite las 12 de integración.
-Con MongoDB local arrancado e inicializado:
+Sin servidores: ` .\mvnw.cmd test ` ejecuta las pruebas unitarias, incluidas las del cliente de
+Deportivo contra un servidor HTTP local. Las de integración se activan solas si hay un MongoDB
+con replica set en `localhost:27017` (o el de `ASEE_TEST_MONGO_URI`); si no, se omiten.
+Con MongoDB local arrancado e inicializado, para forzarlas:
 
 ```powershell
 .\scripts\probar-integracion.ps1
 ```
 
-Ejecuta las 69 pruebas, usando una base aleatoria separada que elimina al acabar.
+Usa una base aleatoria separada que elimina al acabar.
 No necesita Deportivo: simula sus respuestas HTTP para probar también 404 y 503.
 Para otro replica set, indica `ASEE_TEST_MONGO_URI`. La comprobación real contra
 el Deportivo del compañero se documenta aparte en `docs/paso-a-paso.md`.
+
+## Datos de ejemplo
+
+Con Estadísticas y Deportivo arrancados y un token staff (`scripts/crear-token.ps1`):
+
+```powershell
+.\scripts\cargar-datos-ejemplo.ps1
+```
+
+Registra eventos por la API para los partidos y jugadores que Deportivo conozca, de modo que
+las consultas, rankings y el directo no salgan vacíos. Se puede repetir sin duplicar datos.
 
 ## Guías
 

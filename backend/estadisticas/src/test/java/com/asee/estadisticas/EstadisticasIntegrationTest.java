@@ -13,7 +13,7 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.*;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.web.server.context.WebServerApplicationContext;
@@ -24,7 +24,7 @@ import tools.jackson.databind.json.JsonMapper;
 import static org.assertj.core.api.Assertions.*;
 
 @SpringBootTest(webEnvironment=SpringBootTest.WebEnvironment.RANDOM_PORT)
-@EnabledIfEnvironmentVariable(named="ASEE_INTEGRATION",matches="true")
+@ExtendWith(MongoDisponible.class)
 class EstadisticasIntegrationTest {
     static final String P="20000000-0000-0000-0000-000000000001", P2="20000000-0000-0000-0000-000000000002", P3="20000000-0000-0000-0000-000000000003";
     static final String J="10000000-0000-0000-0000-000000000001", J2="10000000-0000-0000-0000-000000000002";
@@ -65,7 +65,6 @@ class EstadisticasIntegrationTest {
         properties.add("app.security.public-key",() -> publicKey.toUri().toString());
         properties.add("app.security.issuer",() -> "asee-test");
         properties.add("app.security.audience",() -> "estadisticas");
-        // Estos tests firman con RS256: si hay JWT_SECRET en el entorno no debe activarse el modo HS256
         properties.add("app.security.hmac-secret",() -> "");
         properties.add("app.websocket.max-subscriptions",() -> "1");
         properties.add("app.websocket.heartbeat-ms",() -> "200");
@@ -224,7 +223,30 @@ class EstadisticasIntegrationTest {
             ws.sendText("{\"tipo\":\"cancelar_suscripcion\",\"partidoId\":\""+P+"\"}",true).join();
             ws.sendText("{\"tipo\":\"suscribir\",\"partidoId\":\""+UUID.randomUUID()+"\"}",true).join();
             assertThat(listener.next("error").path("codigo").asString()).isEqualTo("partido_no_encontrado");
-            assertThat(listener.heartbeats.get()).isPositive();
+            Thread.sleep(250); assertThat(listener.heartbeats.get()).isPositive();
+        } finally { ws.sendClose(WebSocket.NORMAL_CLOSURE,"fin").join(); }
+    }
+    @Test void partidoOJugadorInexistentesEnDeportivoDan404SinEscribir() throws Exception {
+        assertThat(post(UUID.randomUUID().toString(),"sin-partido",J,"tiro_2_anotado").statusCode()).isEqualTo(404);
+        assertThat(eventos.count()).isZero(); assertThat(partidos.count()).isZero();
+        assertThat(post(P,"sin-jugador",UUID.randomUUID().toString(),"tiro_2_anotado").statusCode()).isEqualTo(404);
+        assertThat(eventos.count()).isZero();
+    }
+    @Test void consultasAlmacenadasSobrevivenSiDeportivoCae() throws Exception {
+        assertThat(post(P,"previo",J,"tiro_2_anotado").statusCode()).isEqualTo(201);
+        DEPORTIVO_STATUS.set(503);
+        var guardado=call("GET","/partidos/"+P+"/estadisticas",null,null);
+        assertThat(guardado.statusCode()).isEqualTo(200);
+        assertThat(tree(guardado).path("jugadores").get(0).path("puntos").asInt()).isEqualTo(2);
+        assertThat(call("GET","/partidos/"+P2+"/estadisticas",null,null).statusCode()).isEqualTo(503);
+    }
+    @Test void websocketAvisaSiDeportivoNoPuedeComprobarLaSuscripcion() throws Exception {
+        var listener=new WsListener();
+        var ws=http.newWebSocketBuilder().buildAsync(URI.create("ws://127.0.0.1:"+web.getWebServer().getPort()+"/v1/ws"),listener).get(5,TimeUnit.SECONDS);
+        try {
+            DEPORTIVO_STATUS.set(503);
+            ws.sendText("{\"tipo\":\"suscribir\",\"partidoId\":\""+P+"\"}",true).join();
+            assertThat(listener.next("error").path("codigo").asString()).isEqualTo("servicio_no_disponible");
         } finally { ws.sendClose(WebSocket.NORMAL_CLOSURE,"fin").join(); }
     }
     private HttpResponse<String> post(String p,String client,String j,String type) throws Exception { return call("POST","/partidos/"+p+"/eventos",event(client,j,type),token("staff")); }
