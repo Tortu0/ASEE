@@ -184,3 +184,5 @@ main#app {
 .patro-i img { height: 56px; width: auto; max-width: 220px; border-radius: 8px; display: block; } .patro-i.principal img { height: 76px; } .patro-i.oro img { height: 64px; }
 a.patro-i:hover img, a.patro-i:hover b { opacity: .8; } a.patro-i:focus-visible { outline: 3px solid var(--ambar); outline-offset: 3px; border-radius: 8px; }
 .logo-ini { width: 40px; height: 40px; border-radius: 8px; display: inline-grid; place-items: center; background: var(--azul-claro); color: var(--azul-osc); }
+.jug-foto { width: 100%; aspect-ratio: 1 / 1; object-fit: cover; object-position: top; border-radius: 6px; margin-bottom: 10px; position: relative; background: var(--azul-claro); }
+.ficha-foto { width: 140px; height: 140px; object-fit: cover; object-position: top; border-radius: 12px; border: 1px solid var(--linea); background: var(--azul-claro); }

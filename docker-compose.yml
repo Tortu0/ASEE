@@ -68,6 +68,7 @@ services:
       - "8082:8082"
     environment:
       - SERVER_PORT=8082
+      - SUPABASE_URL=${SUPABASE_URL:-}
       - JWT_SECRET=${JWT_SECRET}
       - MONGODB_URI=mongodb://mongo:27017
     depends_on:
@@ -101,6 +102,7 @@ services:
       - "8084:8084"
     environment:
       - SERVER_PORT=8084
+      - SUPABASE_URL=${SUPABASE_URL:-}
       - MONGODB_URI=mongodb://mongo:27017/compras
       - DATOS_EJEMPLO=true
       - RABBIT_HOST=rabbitmq
@@ -151,6 +153,8 @@ services:
       - "8080:8080"
     environment:
       - PORT=8080
+      - SUPABASE_URL=${SUPABASE_URL:-}
+      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY:-}
       - JWT_SECRET=${JWT_SECRET}
       - STATS_TOKEN_MODE=passthrough
       - UPSTREAM_HOST=host.docker.internal

@@ -9,6 +9,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -18,6 +19,9 @@ public class DatosEjemploInitializer implements CommandLineRunner {
     private static final Logger log = LoggerFactory.getLogger(DatosEjemploInitializer.class);
 
     private final ProductoRepositorio productos;
+
+    @Value("${SUPABASE_URL:}")
+    private String supabaseUrl;
 
     public DatosEjemploInitializer(ProductoRepositorio productos) {
         this.productos = productos;
@@ -43,7 +47,8 @@ public class DatosEjemploInitializer implements CommandLineRunner {
                                     new StockTalla("M", 20),
                                     new StockTalla("L", 18),
                                     new StockTalla("XL", 10)
-                            )
+                            ),
+                            fotoProducto("primera_equipacion.png")
                     ),
                     crearProducto(
                             productoId(2),
@@ -56,7 +61,8 @@ public class DatosEjemploInitializer implements CommandLineRunner {
                                     new StockTalla("M", 15),
                                     new StockTalla("L", 14),
                                     new StockTalla("XL", 6)
-                            )
+                            ),
+                            fotoProducto("segunda_equipacion.png")
                     ),
                     crearProducto(
                             productoId(3),
@@ -64,7 +70,8 @@ public class DatosEjemploInitializer implements CommandLineRunner {
                             "Bufanda de punto jacquard con el escudo del club y lema de la afición.",
                             "bufanda",
                             new BigDecimal("14.50"),
-                            List.of(new StockTalla("unica", 35))
+                            List.of(new StockTalla("unica", 35)),
+                            fotoProducto("bufanda.png")
                     ),
                     crearProducto(
                             productoId(4),
@@ -72,7 +79,8 @@ public class DatosEjemploInitializer implements CommandLineRunner {
                             "Gorra deportiva ajustable con visera curva y escudo del CB Madroñera bordado en relieve.",
                             "gorra",
                             new BigDecimal("16.00"),
-                            List.of(new StockTalla("unica", 25))
+                            List.of(new StockTalla("unica", 25)),
+                            fotoProducto("gorra.png")
                     ),
                     crearProducto(
                             productoId(5),
@@ -80,7 +88,8 @@ public class DatosEjemploInitializer implements CommandLineRunner {
                             "Mochila resistente con compartimento inferior ventilado para zapatillas y balón.",
                             "accesorio",
                             new BigDecimal("29.90"),
-                            List.of(new StockTalla("unica", 15))
+                            List.of(new StockTalla("unica", 15)),
+                            fotoProducto("mochila.png")
                     ),
                     crearProducto(
                             productoId(6),
@@ -88,7 +97,8 @@ public class DatosEjemploInitializer implements CommandLineRunner {
                             "Balón de baloncesto talla 7 en piel sintética de agarre superior con logotipo del club.",
                             "otro",
                             new BigDecimal("24.95"),
-                            List.of(new StockTalla("unica", 20))
+                            List.of(new StockTalla("unica", 20)),
+                            fotoProducto("balon.png")
                     )
             );
 
@@ -103,7 +113,7 @@ public class DatosEjemploInitializer implements CommandLineRunner {
     }
 
     private static Producto crearProducto(String id, String nombre, String descripcion,
-                                          String categoria, BigDecimal precio, List<StockTalla> stock) {
+                                          String categoria, BigDecimal precio, List<StockTalla> stock, List<String> fotos) {
         Producto p = new Producto();
         p.id = id;
         p.nombre = nombre;
@@ -111,8 +121,13 @@ public class DatosEjemploInitializer implements CommandLineRunner {
         p.categoria = categoria;
         p.precio = precio;
         p.stock = stock;
-        p.fotos = List.of();
+        p.fotos = fotos;
         return p;
+    }
+
+    private List<String> fotoProducto(String archivo) {
+        if (supabaseUrl == null || supabaseUrl.isBlank()) return List.of();
+        return List.of(supabaseUrl.replaceAll("/+$", "") + "/storage/v1/object/public/club-media/productos/" + archivo);
     }
 
     private static String productoId(int n) {

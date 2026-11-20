@@ -2,6 +2,7 @@
 import { api, session } from '../api.js';
 import { html, fmt, vacio, aviso, modal, cerrarModal, toast, acts, forms, ETQ, POS, CAT } from '../ui.js';
 import { jugadoresMapa, limpiarCacheJugadores } from '../comun.js';
+import { subirImagen } from '../storage.js';
 
 const opts = o => Object.entries(o).map(([v, t]) => [v, t]);
 const loc = iso => { const d = new Date(iso); return new Date(d - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 16); };
@@ -10,13 +11,13 @@ const RES = {
   partidos: { t: 'Partidos', svc: 'deportivo', path: '/partidos', id: 'partidoId', del: 'admin', cols: [['fechaHora', 'Fecha', fmt.fechaHora], ['rival', 'Rival'], ['estado', 'Estado', v => ETQ[v]], ['jornada', 'J']],
     f: [['fechaHora', 'Fecha y hora', 'datetime'], ['rival', 'Rival'], ['lugar', 'Lugar'], ['esLocal', 'Juega en casa', 'check'], ['temporada', 'Temporada (AAAA-AAAA)'], ['competicion', 'Competición', 'text', 1], ['jornada', 'Jornada', 'number', 1], ['estado', 'Estado', 'select', 1, opts(ETQ)], ['puntosLocal', 'Puntos del equipo local', 'number', 1], ['puntosVisitante', 'Puntos del visitante', 'number', 1], ['ventaEntradasAbierta', 'Venta de entradas abierta', 'check']] },
   jugadores: { t: 'Jugadores', svc: 'deportivo', path: '/jugadores', id: 'jugadorId', del: 'admin', todos: true, cols: [['dorsal', '#'], ['nombre', 'Nombre'], ['posicion', 'Posición', v => POS[v]], ['activo', 'Activo', v => v ? 'Sí' : 'Baja']],
-    f: [['nombre', 'Nombre'], ['dorsal', 'Dorsal', 'number'], ['posicion', 'Posición', 'select', 0, opts(POS)], ['alturaCm', 'Altura (cm)', 'number', 1], ['fechaNacimiento', 'Fecha de nacimiento', 'date', 1], ['activo', 'En activo', 'check']] },
+    f: [['nombre', 'Nombre'], ['dorsal', 'Dorsal', 'number'], ['posicion', 'Posición', 'select', 0, opts(POS)], ['alturaCm', 'Altura (cm)', 'number', 1], ['fechaNacimiento', 'Fecha de nacimiento', 'date', 1], ['fotoUrl', 'Foto del jugador', 'img', 1, 'jugadores'], ['activo', 'En activo', 'check']] },
   noticias: { t: 'Noticias', svc: 'deportivo', path: '/noticias', id: 'noticiaId', del: 'staff', cols: [['fechaPublicacion', 'Fecha', fmt.dia], ['titulo', 'Título'], ['categoria', 'Categoría', v => CAT[v]]],
-    f: [['titulo', 'Título'], ['categoria', 'Categoría', 'select', 0, opts(CAT)], ['contenido', 'Contenido', 'area'], ['imagenUrl', 'URL de imagen', 'text', 1]] },
+    f: [['titulo', 'Título'], ['categoria', 'Categoría', 'select', 0, opts(CAT)], ['contenido', 'Contenido', 'area'], ['imagenUrl', 'Imagen', 'img', 1, 'noticias']] },
   productos: { t: 'Productos', svc: 'compras', path: '/productos', id: 'productoId', del: 'admin', cols: [['nombre', 'Producto'], ['categoria', 'Categoría'], ['precio', 'Precio', fmt.euros], ['stock', 'Stock', s => (s || []).map(t => `${t.talla}:${t.unidades}`).join(' ')]],
-    f: [['nombre', 'Nombre'], ['categoria', 'Categoría', 'select', 0, opts({ camiseta: 'Camiseta', bufanda: 'Bufanda', gorra: 'Gorra', accesorio: 'Accesorio', otro: 'Otro' })], ['precio', 'Precio (€)', 'number'], ['descripcion', 'Descripción', 'area', 1], ['stock', 'Stock por talla', 'stock', 1]] },
+    f: [['nombre', 'Nombre'], ['categoria', 'Categoría', 'select', 0, opts({ camiseta: 'Camiseta', bufanda: 'Bufanda', gorra: 'Gorra', accesorio: 'Accesorio', otro: 'Otro' })], ['precio', 'Precio (€)', 'number'], ['descripcion', 'Descripción', 'area', 1], ['stock', 'Stock por talla', 'stock', 1], ['fotos', 'Foto del producto', 'imgs', 1, 'productos']] },
   patrocinadores: { t: 'Patrocinadores', svc: 'institucional', path: '/patrocinadores', id: 'patrocinadorId', del: 'admin', admin: true, cols: [['nombre', 'Nombre'], ['nivel', 'Nivel'], ['enlace', 'Web']],
-    f: [['nombre', 'Nombre'], ['nivel', 'Nivel', 'select', 0, opts({ principal: 'Principal', oro: 'Oro', plata: 'Plata', bronce: 'Bronce', colaborador: 'Colaborador' })], ['enlace', 'Web (https://…)', 'url', 1], ['logoUrl', 'URL del logo (https://… o /img/…)', 'text', 1]] },
+    f: [['nombre', 'Nombre'], ['nivel', 'Nivel', 'select', 0, opts({ principal: 'Principal', oro: 'Oro', plata: 'Plata', bronce: 'Bronce', colaborador: 'Colaborador' })], ['enlace', 'Web (https://…)', 'url', 1], ['logoUrl', 'Logo', 'img', 1, 'patrocinadores']] },
   palmares: { t: 'Palmarés', svc: 'institucional', path: '/club/palmares', id: 'tituloId', del: 'admin', cols: [['temporada', 'Temporada'], ['competicion', 'Competición'], ['descripcion', 'Detalle']],
     f: [['competicion', 'Competición'], ['temporada', 'Temporada (AAAA-AAAA)'], ['descripcion', 'Detalle', 'text', 1]] },
 };
@@ -42,6 +43,10 @@ function formulario(sec, x) {
   const r = RES[sec];
   const campo = ([n, l, tipo = 'text', opt, o]) => { const v = x?.[n], req = opt ? '' : 'required', id = 'f-' + n;
     if (tipo === 'check') return html`<label class="chk campo"><input type="checkbox" name="${n}" ${(x ? v : n === 'activo' || n === 'esLocal') ? 'checked' : ''}> ${l}</label>`;
+    if (tipo === 'img' || tipo === 'imgs') {
+      const actual = tipo === 'imgs' ? (Array.isArray(v) ? v[0] ?? '' : '') : (v ?? '');
+      return html`<div class="campo"><label for="${id}">${l}</label><input id="${id}" name="${n}" type="text" value="${actual}" placeholder="https://… o sube un archivo abajo"><input type="file" accept="image/*" data-subir="${id}" data-carpeta="${o || sec}" style="margin-top:6px"></div>`;
+    }
     return html`<div class="campo"><label for="${id}">${l}</label>${tipo === 'select' ? html`<select id="${id}" name="${n}" ${req}>${o.map(([val, t]) => html`<option value="${val}" ${v === val ? 'selected' : ''}>${t}</option>`)}</select>`
       : tipo === 'area' ? html`<textarea id="${id}" name="${n}" ${req}>${v ?? ''}</textarea>`
       : html`<input id="${id}" name="${n}" ${req} type="${{ datetime: 'datetime-local', number: 'number', date: 'date', stock: 'text', url: 'url' }[tipo] || 'text'}" ${tipo === 'number' ? 'step="any"' : ''} value="${v == null ? '' : tipo === 'datetime' ? loc(v) : tipo === 'stock' ? STOCK.aForm(v) : v}" ${tipo === 'stock' ? 'placeholder="S:10, M:5, L:0"' : ''}>`}</div>`; };
@@ -54,7 +59,7 @@ forms.crud = async f => {
   const sec = f.dataset.sec, r = RES[sec], fd = new FormData(f), out = {};
   for (const [n, , tipo = 'text'] of r.f) {
     const v = fd.get(n);
-    if (tipo === 'check') out[n] = fd.has(n); else if (v === '' || v == null) continue;
+    if (tipo === 'check') out[n] = fd.has(n); else if (tipo === 'imgs') out[n] = v && v.trim() ? [v.trim()] : []; else if (v === '' || v == null) { if (tipo === 'img') out[n] = null; continue; }
     else out[n] = tipo === 'number' ? Number(v) : tipo === 'datetime' ? new Date(v).toISOString() : tipo === 'stock' ? STOCK.deForm(v) : v;
   }
   const c = api.crud(r.svc, r.path), prev = f.dataset.id ? CUR[sec].get(f.dataset.id) : null;
@@ -117,3 +122,19 @@ document.addEventListener('change', async e => { const id = e.target.dataset?.ro
 acts['alta-socio'] = el => { const u = CUR.us.get(el.dataset.id), hoy = new Date(Date.now() + 365 * 864e5).toISOString().slice(0, 10);
   modal(html`<h2>Alta de socio</h2><p class="suave">${u.nombre}</p><form data-form="socio" data-id="${u.usuarioId}"><div class="campo"><label for="tc">Cuota</label><select id="tc" name="tipoCuota">${['mensual', 'anual', 'juvenil', 'jubilado'].map(c => html`<option>${c}</option>`)}</select></div><div class="campo"><label for="fc">Caduca el</label><input id="fc" name="fechaCaducidad" type="date" value="${hoy}" required></div><div class="err"></div><button class="btn" type="submit">Guardar alta</button></form>`); };
 forms.socio = async f => { await api.altaSocio(f.dataset.id, Object.fromEntries(new FormData(f))); cerrarModal(); toast('Socio dado de alta'); recargar(); };
+
+document.addEventListener('change', async e => {
+  const targetId = e.target.dataset?.subir;
+  if (!targetId || !e.target.files?.[0]) return;
+  const file = e.target.files[0], inputUrl = document.getElementById(targetId), btn = e.target.closest('form')?.querySelector('button[type="submit"]');
+  if (btn) btn.disabled = true;
+  try {
+    toast('Subiendo imagen a Supabase…');
+    inputUrl.value = await subirImagen(file, e.target.dataset.carpeta || 'general');
+    toast('Imagen subida correctamente');
+  } catch (err) {
+    toast(err.message, 'error');
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+});

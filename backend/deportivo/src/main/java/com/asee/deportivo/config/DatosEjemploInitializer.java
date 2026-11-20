@@ -13,6 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
@@ -33,6 +34,9 @@ public class DatosEjemploInitializer implements CommandLineRunner {
     private final JugadorRepository jugadores;
     private final PartidoRepository partidos;
     private final NoticiaRepository noticias;
+
+    @Value("${SUPABASE_URL:}")
+    private String supabaseUrl;
 
     public DatosEjemploInitializer(JugadorRepository jugadores,
                                    PartidoRepository partidos,
@@ -61,21 +65,21 @@ public class DatosEjemploInitializer implements CommandLineRunner {
         }
         jugadores.saveAll(List.of(
                 new Jugador(jugadorId(1), "Carlos Gómez", 4, Posicion.base, 185,
-                        LocalDate.of(1999, 3, 12), null, true),
+                        LocalDate.of(1999, 3, 12), fotoJugador("04-CarlosGomez.png"), true),
                 new Jugador(jugadorId(2), "Pablo Sánchez", 7, Posicion.escolta, 190,
-                        LocalDate.of(2000, 7, 25), null, true),
+                        LocalDate.of(2000, 7, 25), fotoJugador("07-PabloSanchez.png"), true),
                 new Jugador(jugadorId(3), "Luis Pérez", 9, Posicion.alero, 198,
-                        LocalDate.of(1998, 11, 2), null, true),
+                        LocalDate.of(1998, 11, 2), fotoJugador("09-LuisPerez.png"), true),
                 new Jugador(jugadorId(4), "Diego Martín", 11, Posicion.alero, 196,
-                        LocalDate.of(2001, 1, 18), null, true),
+                        LocalDate.of(2001, 1, 18), fotoJugador("11-DiegoMartin.png"), true),
                 new Jugador(jugadorId(5), "Javier Ramos", 13, Posicion.ala_pivot, 203,
-                        LocalDate.of(1997, 5, 30), null, true),
+                        LocalDate.of(1997, 5, 30), fotoJugador("13-JavierRamos.png"), true),
                 new Jugador(jugadorId(6), "Álvaro Moreno", 15, Posicion.pivot, 208,
-                        LocalDate.of(1996, 9, 9), null, true),
+                        LocalDate.of(1996, 9, 9), fotoJugador("15-AlvaroMoreno.png"), true),
                 new Jugador(jugadorId(7), "Marcos Ortega", 5, Posicion.base, 180,
-                        LocalDate.of(2002, 4, 14), null, true),
+                        LocalDate.of(2002, 4, 14), fotoJugador("05-MarcosOrtega.png"), true),
                 new Jugador(jugadorId(8), "Hugo Blanco", 8, Posicion.escolta, 188,
-                        LocalDate.of(2003, 8, 21), null, true),
+                        LocalDate.of(2003, 8, 21), fotoJugador("08-HugoBlanco.png"), true),
                 // Jugador dado de baja: su dorsal no cuenta para la regla de unicidad
                 new Jugador(jugadorId(9), "Iván Castro", 10, Posicion.alero, 194,
                         LocalDate.of(1995, 12, 5), null, false)
@@ -147,6 +151,11 @@ public class DatosEjemploInitializer implements CommandLineRunner {
     }
 
     // ---------- UUID fijos: iguales en todos los ordenadores ----------
+
+    private String fotoJugador(String archivo) {
+        if (supabaseUrl == null || supabaseUrl.isBlank()) return null;
+        return supabaseUrl.replaceAll("/+$", "") + "/storage/v1/object/public/club-media/jugadores/" + archivo;
+    }
 
     private static UUID jugadorId(int n) {
         return uuid("10000000", n);

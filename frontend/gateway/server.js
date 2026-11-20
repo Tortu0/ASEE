@@ -25,6 +25,8 @@ const STATS_AUDIENCE = process.env.STATS_JWT_AUDIENCE || 'estadisticas';
 // 'exchange' (por defecto): reemite un RS256 con iss/aud para Estadísticas configurada con JWT_PUBLIC_KEY.
 // 'passthrough': reenvía el token HS256 de Usuarios; úsalo si Estadísticas se arranca con JWT_SECRET.
 const STATS_MODE = process.env.STATS_TOKEN_MODE || 'exchange';
+const SUPABASE_URL = (process.env.SUPABASE_URL || '').replace(/\/+$/, '');
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || '';
 
 if (!JWT_SECRET) {
   console.error('\n✖ Falta JWT_SECRET (el mismo valor que usa el microservicio Usuarios).\n' +
@@ -73,7 +75,7 @@ app.use((req, res, next) => {                                   // rate limiting
   next();
 });
 
-app.get('/config.json', (_req, res) => res.json({ gateway: '', wsUrl: WS_URL }));
+app.get('/config.json', (_req, res) => res.json({ gateway: '', wsUrl: WS_URL, supabaseUrl: SUPABASE_URL, supabaseKey: SUPABASE_ANON_KEY }));
 
 // ── Estado de los servicios (contrato) ─────────────────────────────────────
 const PROBES = {
