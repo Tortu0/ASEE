@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 100" role="img" aria-label="Banco Rural">
+<rect width="280" height="100" rx="10" fill="#E8F5EE"/>
+<circle cx="46" cy="50" r="26" fill="#1B7F47"/>
+<path d="M30 62 L46 34 L62 62 Z" fill="#fff" fill-rule="evenodd"/>
+<text x="86" y="57" font-family="'Big Shoulders Display','Arial Narrow',Impact,sans-serif" font-weight="800" font-size="26" fill="#1B7F47">Banco Rural</text>
+</svg>

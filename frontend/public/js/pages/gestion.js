@@ -1,7 +1,7 @@
 // Panel de gestión para staff/admin. Los recursos CRUD se describen con datos (RES); el resto son vistas propias.
 import { api, session } from '../api.js';
 import { html, fmt, vacio, aviso, modal, cerrarModal, toast, acts, forms, ETQ, POS, CAT } from '../ui.js';
-import { jugadoresMapa } from '../comun.js';
+import { jugadoresMapa, limpiarCacheJugadores } from '../comun.js';
 
 const opts = o => Object.entries(o).map(([v, t]) => [v, t]);
 const loc = iso => { const d = new Date(iso); return new Date(d - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 16); };
@@ -9,14 +9,14 @@ const STOCK = { aForm: s => (s || []).map(t => `${t.talla}:${t.unidades}`).join(
 const RES = {
   partidos: { t: 'Partidos', svc: 'deportivo', path: '/partidos', id: 'partidoId', del: 'admin', cols: [['fechaHora', 'Fecha', fmt.fechaHora], ['rival', 'Rival'], ['estado', 'Estado', v => ETQ[v]], ['jornada', 'J']],
     f: [['fechaHora', 'Fecha y hora', 'datetime'], ['rival', 'Rival'], ['lugar', 'Lugar'], ['esLocal', 'Juega en casa', 'check'], ['temporada', 'Temporada (AAAA-AAAA)'], ['competicion', 'Competición', 'text', 1], ['jornada', 'Jornada', 'number', 1], ['estado', 'Estado', 'select', 1, opts(ETQ)], ['puntosLocal', 'Puntos del equipo local', 'number', 1], ['puntosVisitante', 'Puntos del visitante', 'number', 1], ['ventaEntradasAbierta', 'Venta de entradas abierta', 'check']] },
-  jugadores: { t: 'Jugadores', svc: 'deportivo', path: '/jugadores', id: 'jugadorId', del: 'admin', q: { activo: undefined }, cols: [['dorsal', '#'], ['nombre', 'Nombre'], ['posicion', 'Posición', v => POS[v]], ['activo', 'Activo', v => v ? 'Sí' : 'Baja']],
+  jugadores: { t: 'Jugadores', svc: 'deportivo', path: '/jugadores', id: 'jugadorId', del: 'admin', todos: true, cols: [['dorsal', '#'], ['nombre', 'Nombre'], ['posicion', 'Posición', v => POS[v]], ['activo', 'Activo', v => v ? 'Sí' : 'Baja']],
     f: [['nombre', 'Nombre'], ['dorsal', 'Dorsal', 'number'], ['posicion', 'Posición', 'select', 0, opts(POS)], ['alturaCm', 'Altura (cm)', 'number', 1], ['fechaNacimiento', 'Fecha de nacimiento', 'date', 1], ['activo', 'En activo', 'check']] },
   noticias: { t: 'Noticias', svc: 'deportivo', path: '/noticias', id: 'noticiaId', del: 'staff', cols: [['fechaPublicacion', 'Fecha', fmt.dia], ['titulo', 'Título'], ['categoria', 'Categoría', v => CAT[v]]],
     f: [['titulo', 'Título'], ['categoria', 'Categoría', 'select', 0, opts(CAT)], ['contenido', 'Contenido', 'area'], ['imagenUrl', 'URL de imagen', 'text', 1]] },
   productos: { t: 'Productos', svc: 'compras', path: '/productos', id: 'productoId', del: 'admin', cols: [['nombre', 'Producto'], ['categoria', 'Categoría'], ['precio', 'Precio', fmt.euros], ['stock', 'Stock', s => (s || []).map(t => `${t.talla}:${t.unidades}`).join(' ')]],
     f: [['nombre', 'Nombre'], ['categoria', 'Categoría', 'select', 0, opts({ camiseta: 'Camiseta', bufanda: 'Bufanda', gorra: 'Gorra', accesorio: 'Accesorio', otro: 'Otro' })], ['precio', 'Precio (€)', 'number'], ['descripcion', 'Descripción', 'area', 1], ['stock', 'Stock por talla', 'stock', 1]] },
   patrocinadores: { t: 'Patrocinadores', svc: 'institucional', path: '/patrocinadores', id: 'patrocinadorId', del: 'admin', admin: true, cols: [['nombre', 'Nombre'], ['nivel', 'Nivel'], ['enlace', 'Web']],
-    f: [['nombre', 'Nombre'], ['nivel', 'Nivel', 'select', 0, opts({ principal: 'Principal', oro: 'Oro', plata: 'Plata', bronce: 'Bronce', colaborador: 'Colaborador' })], ['enlace', 'Web', 'text', 1], ['logoUrl', 'URL del logo', 'text', 1]] },
+    f: [['nombre', 'Nombre'], ['nivel', 'Nivel', 'select', 0, opts({ principal: 'Principal', oro: 'Oro', plata: 'Plata', bronce: 'Bronce', colaborador: 'Colaborador' })], ['enlace', 'Web (https://…)', 'url', 1], ['logoUrl', 'URL del logo (https://… o /img/…)', 'text', 1]] },
   palmares: { t: 'Palmarés', svc: 'institucional', path: '/club/palmares', id: 'tituloId', del: 'admin', cols: [['temporada', 'Temporada'], ['competicion', 'Competición'], ['descripcion', 'Detalle']],
     f: [['competicion', 'Competición'], ['temporada', 'Temporada (AAAA-AAAA)'], ['descripcion', 'Detalle', 'text', 1]] },
 };
@@ -33,7 +33,7 @@ const recargar = () => window.dispatchEvent(new HashChangeEvent('hashchange'));
 
 // ── CRUD genérico ──
 async function crud(sec) {
-  const r = RES[sec], rows = await api.crud(r.svc, r.path).list(r.q); CUR[sec] = new Map(rows.map(x => [x[r.id], x]));
+  const r = RES[sec], c0 = api.crud(r.svc, r.path), rows = r.todos ? (await Promise.all([c0.list({ activo: true }), c0.list({ activo: false })])).flat() : await c0.list(r.q); CUR[sec] = new Map(rows.map(x => [x[r.id], x]));
   const puedeBorrar = r.del === 'staff' || session.admin;
   return html`<div class="cab"><span class="suave">${rows.length} registros</span><button class="btn" data-act="nuevo" data-sec="${sec}">Añadir</button></div>
     ${rows.length ? html`<div class="tabla-w"><table><thead><tr>${r.cols.map(c => html`<th class="izq">${c[1]}</th>`)}<th></th></tr></thead><tbody>${rows.map(x => html`<tr>${r.cols.map(([k, , f]) => html`<td class="izq">${f ? f(x[k]) : x[k] ?? '–'}</td>`)}<td class="der"><button class="btn sec chico" data-act="editar" data-sec="${sec}" data-id="${x[r.id]}">Editar</button> ${puedeBorrar ? html`<button class="btn peligro chico" data-act="borrar" data-sec="${sec}" data-id="${x[r.id]}">Eliminar</button>` : ''}</td></tr>`)}</tbody></table></div>` : vacio('No hay registros.')}`;
@@ -44,12 +44,12 @@ function formulario(sec, x) {
     if (tipo === 'check') return html`<label class="chk campo"><input type="checkbox" name="${n}" ${(x ? v : n === 'activo' || n === 'esLocal') ? 'checked' : ''}> ${l}</label>`;
     return html`<div class="campo"><label for="${id}">${l}</label>${tipo === 'select' ? html`<select id="${id}" name="${n}" ${req}>${o.map(([val, t]) => html`<option value="${val}" ${v === val ? 'selected' : ''}>${t}</option>`)}</select>`
       : tipo === 'area' ? html`<textarea id="${id}" name="${n}" ${req}>${v ?? ''}</textarea>`
-      : html`<input id="${id}" name="${n}" ${req} type="${{ datetime: 'datetime-local', number: 'number', date: 'date', stock: 'text' }[tipo] || 'text'}" ${tipo === 'number' ? 'step="any"' : ''} value="${v == null ? '' : tipo === 'datetime' ? loc(v) : tipo === 'stock' ? STOCK.aForm(v) : v}" ${tipo === 'stock' ? 'placeholder="S:10, M:5, L:0"' : ''}>`}</div>`; };
+      : html`<input id="${id}" name="${n}" ${req} type="${{ datetime: 'datetime-local', number: 'number', date: 'date', stock: 'text', url: 'url' }[tipo] || 'text'}" ${tipo === 'number' ? 'step="any"' : ''} value="${v == null ? '' : tipo === 'datetime' ? loc(v) : tipo === 'stock' ? STOCK.aForm(v) : v}" ${tipo === 'stock' ? 'placeholder="S:10, M:5, L:0"' : ''}>`}</div>`; };
   modal(html`<h2>${x ? 'Editar' : 'Añadir'} · ${r.t.toLowerCase()}</h2><form data-form="crud" data-sec="${sec}" data-id="${x?.[r.id] ?? ''}">${r.f.map(campo)}<div class="err"></div><button class="btn" type="submit">Guardar</button></form>`);
 }
 acts.nuevo = el => formulario(el.dataset.sec);
 acts.editar = el => formulario(el.dataset.sec, CUR[el.dataset.sec].get(el.dataset.id));
-acts.borrar = async el => { if (!confirm('¿Eliminar este registro? No se puede deshacer.')) return; const r = RES[el.dataset.sec]; await api.crud(r.svc, r.path).borrar(el.dataset.id); toast('Eliminado'); recargar(); };
+acts.borrar = async el => { if (!confirm('¿Eliminar este registro? No se puede deshacer.')) return; const r = RES[el.dataset.sec]; await api.crud(r.svc, r.path).borrar(el.dataset.id); if (el.dataset.sec === 'jugadores') limpiarCacheJugadores(); toast('Eliminado'); recargar(); };
 forms.crud = async f => {
   const sec = f.dataset.sec, r = RES[sec], fd = new FormData(f), out = {};
   for (const [n, , tipo = 'text'] of r.f) {
@@ -58,7 +58,7 @@ forms.crud = async f => {
     else out[n] = tipo === 'number' ? Number(v) : tipo === 'datetime' ? new Date(v).toISOString() : tipo === 'stock' ? STOCK.deForm(v) : v;
   }
   const c = api.crud(r.svc, r.path), prev = f.dataset.id ? CUR[sec].get(f.dataset.id) : null;
-  await (prev ? c.editar(f.dataset.id, { ...prev, ...out }) : c.crear(out)); cerrarModal(); toast('Guardado'); recargar();
+  await (prev ? c.editar(f.dataset.id, { ...prev, ...out }) : c.crear(out)); if (sec === 'jugadores') limpiarCacheJugadores(); cerrarModal(); toast('Guardado'); recargar();
 };
 
 // ── Pedidos ──

@@ -1,9 +1,12 @@
 import { api, TEMPORADA_DEFECTO } from './api.js';
-import { html, raw, fmt, ETQ } from './ui.js';
+import { html, raw, fmt, ETQ, imagen, urlSegura } from './ui.js';
 
 let cache = null;
-export const jugadoresMapa = async () => cache ??= new Map((await api.jugadores()).map(j => [j.jugadorId, j]));
-export const temporadaDe = ps => ps?.[0]?.temporada || TEMPORADA_DEFECTO;
+// Incluye jugadores de baja (el backend solo devuelve activos por defecto) para que box score y noticias conserven el nombre.
+export const jugadoresMapa = async () => cache ??= new Map((await Promise.all([api.jugadores(), api.jugadores({ activo: false })])).flat().map(j => [j.jugadorId, j]));
+export const limpiarCacheJugadores = () => { cache = null; };
+// Los partidos llegan ordenados por fecha ascendente: no vale el primero, se toma la temporada más reciente.
+export const temporadaDe = ps => (ps || []).map(p => p.temporada).filter(Boolean).sort().at(-1) || TEMPORADA_DEFECTO;
 // puntosLocal/puntosVisitante son los del equipo que juega en casa en ese partido
 export const marcadorNuestro = p => p.puntosLocal == null ? null : p.esLocal ? [p.puntosLocal, p.puntosVisitante] : [p.puntosVisitante, p.puntosLocal];
 export const etiqueta = e => html`<span class="etq ${e}">${ETQ[e] || e}</span>`;
@@ -20,4 +23,11 @@ export function filaPartido(p) {
     <div class="res">${m ? html`<span style="color:${m[0] > m[1] ? 'var(--ok)' : 'var(--error)'}">${m[0]}–${m[1]}</span>` : etiqueta(p.estado)}${m && p.estado === 'en_juego' ? html` <span class="vivo"></span>` : ''}</div>
     ${p.ventaEntradasAbierta && p.estado === 'programado' ? html`<a class="btn compra chico" href="#/entradas/${p.partidoId}">Entradas</a>` : html`<a class="btn sec chico" href="#/partidos/${p.partidoId}">Ver</a>`}</li>`;
 }
-export const resumenNoticia = (n, grande = false) => html`<a class="noticia ${grande ? 'grande' : ''}" href="#/noticias/${n.noticiaId}"><span class="peq suave">${fmt.dia(n.fechaPublicacion)}</span><h3>${n.titulo}</h3><span class="suave">${n.contenido.length > 150 ? n.contenido.slice(0, 150) + '…' : n.contenido}</span></a>`;
+export const imgNoticia = (n, clase = '') => imagen(n.imagenUrl, '', `/img/noticias/${n.categoria in ETQ_CAT ? n.categoria : 'otra'}.svg`, clase);
+const ETQ_CAT = { fichaje: 1, lesion: 1, convocatoria: 1, cronica: 1, club: 1, otra: 1 };
+export const resumenNoticia = (n, grande = false) => html`<a class="noticia ${grande ? 'grande' : ''}" href="#/noticias/${n.noticiaId}"><div class="noticia-img">${imgNoticia(n)}</div><div><span class="peq suave">${fmt.dia(n.fechaPublicacion)}</span><h3>${n.titulo}</h3><span class="suave">${n.contenido.length > 150 ? n.contenido.slice(0, 150) + '…' : n.contenido}</span></div></a>`;
+
+// Patrocinador: logo (o iniciales) y enlace solo si la URL es válida.
+export const patro = p => { const url = urlSegura(p.enlace), logo = urlSegura(p.logoUrl);
+  const cuerpo = logo ? html`<img src="${logo}" alt="${p.nombre}" loading="lazy">` : html`<span class="logo-ini" aria-hidden="true">${p.nombre.slice(0, 1)}</span><b>${p.nombre}</b>`;
+  return url ? html`<a class="patro-i ${p.nivel}" href="${url}" target="_blank" rel="noopener noreferrer" title="${p.nombre}">${cuerpo}</a>` : html`<span class="patro-i ${p.nivel}" title="${p.nombre}">${cuerpo}</span>`; };

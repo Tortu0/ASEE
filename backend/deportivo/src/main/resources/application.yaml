@@ -18,3 +18,6 @@ app:
   datos-ejemplo: ${DATOS_EJEMPLO:true}
   # CORS para que el frontend pueda llamar directamente en desarrollo. Con el API Gateway no hace falta.
   cors-dev: ${CORS_DEV:true}
+# Secreto HS256 compartido con Usuarios y el gateway (variable de entorno JWT_SECRET)
+jwt:
+  secret: ${JWT_SECRET:}
