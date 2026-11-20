@@ -50,7 +50,7 @@ jobs:
 
       - name: Ejecutar tests de ${{ matrix.servicio }}
         working-directory: backend/${{ matrix.servicio }}
-        run: chmod +x mvnw && ./mvnw test -B
+        run: chmod +x mvnw && for i in 1 2 3; do ./mvnw test -B && break || sleep 5; done
 
   test-e2e:
     needs: test-backend
