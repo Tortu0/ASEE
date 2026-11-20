@@ -13,6 +13,7 @@ export async function subirImagen(file, carpeta = 'general') {
       Authorization: `Bearer ${cfg.supabaseKey}`,
       'Content-Type': file.type || 'application/octet-stream',
       'x-upsert': 'true',
+      'cache-control': 'max-age=31536000',
     },
     body: file,
   });

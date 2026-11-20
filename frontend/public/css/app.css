@@ -100,7 +100,7 @@ textarea { min-height: 96px; resize: vertical; } input[type=checkbox], input[typ
 .jug { position: relative; padding: 16px 16px 18px; border-right: 1px solid var(--linea); border-bottom: 1px solid var(--linea); color: inherit; text-decoration: none; min-height: 150px; display: flex; flex-direction: column; justify-content: end; background: var(--papel); }
 .jug:hover { background: var(--azul-claro); } .jug .dorsal { position: absolute; top: 4px; right: 12px; font: 800 5.4rem/1 var(--display); color: var(--azul); opacity: .16; }
 .jug strong { font-size: 1.1rem; position: relative; }
-.ficha { display: grid; grid-template-columns: auto 1fr; gap: 8px 40px; align-items: center; } .ficha .dorsal-g { font: 800 clamp(6rem, 18vw, 11rem)/.8 var(--display); color: var(--azul); }
+.ficha { display: flex; flex-wrap: wrap; gap: 16px 32px; align-items: center; } .ficha .dorsal-g { font: 800 clamp(6rem, 18vw, 11rem)/.8 var(--display); color: var(--azul); }
 
 /* tablas */
 .tabla-w { overflow-x: auto; border-top: 1px solid var(--tinta); }
@@ -128,8 +128,8 @@ tbody tr:hover { background: #fff8; } td.fuerte { font-weight: 700; } tr.fuera t
 
 /* tienda */
 .catalogo { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 28px 24px; }
-.prod { text-align: left; background: none; border: 0; padding: 0; cursor: pointer; font: inherit; color: inherit; }
-.prod .foto { aspect-ratio: 4/3; background: var(--azul-claro); display: grid; place-items: center; border-radius: var(--r); color: var(--azul); margin-bottom: 10px; overflow: hidden; } .prod .foto img { width: 100%; height: 100%; object-fit: cover; }
+.prod { display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start; text-align: left; background: none; border: 0; padding: 0; cursor: pointer; font: inherit; color: inherit; }
+.prod .foto { position: relative; width: 100%; aspect-ratio: 1 / 1; background: var(--azul-claro); display: grid; place-items: center; border-radius: var(--r); color: var(--azul); margin-bottom: 10px; overflow: hidden; } .prod .foto img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .prod .foto svg { width: 46%; } .prod:hover .foto { background: color-mix(in srgb, var(--azul) 18%, #fff); }
 .prod .precio { font: 800 1.5rem var(--display); } .prod.agotado { opacity: .55; }
 .tallas { display: flex; gap: 6px; flex-wrap: wrap; } .tallas label { margin: 0; } .tallas input { position: absolute; opacity: 0; }
@@ -173,12 +173,12 @@ main#app {
 .cifras { list-style: none; margin: 0 0 8px; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0; border-top: 1px solid var(--tinta); border-bottom: 1px solid var(--linea); }
 .cifras li { padding: 16px 12px; display: flex; flex-direction: column; } .cifras b { font-size: 2.6rem; line-height: 1; color: var(--azul); } .cifras span { color: var(--suave); font-size: .92rem; }
 .tarjetas { display: grid; gap: 20px; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
-.tarjeta { background: var(--papel); border: 1px solid var(--linea); border-radius: var(--r); padding: 0 0 16px; display: flex; flex-direction: column; gap: 8px; overflow: hidden; }
-.tarjeta > :not(.tarjeta-img) { margin-left: 16px; margin-right: 16px; } .tarjeta > :first-child:not(.tarjeta-img) { margin-top: 16px; }
-.tarjeta-img { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; display: block; background: var(--azul-claro); }
+.tarjeta { background: var(--papel); border: 1px solid var(--linea); border-radius: var(--r); padding: 24px 28px 26px; display: flex; flex-direction: column; gap: 10px; overflow: hidden; }
+.tarjeta > a:last-child { margin-top: auto; padding-top: 6px; }
+.tarjeta-img { width: calc(100% + 56px); max-width: none; margin: -24px -28px 10px; aspect-ratio: 16 / 9; object-fit: cover; display: block; background: var(--azul-claro); }
 .junta { list-style: none; margin: 0; padding: 0; display: grid; gap: 16px 32px; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
 .junta li { display: flex; gap: 14px; align-items: center; padding: 12px 0; border-top: 1px solid var(--linea); }
-.avatar { width: 52px; height: 52px; border-radius: 50%; flex: none; object-fit: cover; display: inline-grid; place-items: center; background: var(--azul); color: #fff; font: 800 1.2rem var(--display); }
+.avatar { width: 52px; height: 52px; border-radius: 50%; flex: none; object-fit: cover; object-position: top; display: inline-grid; place-items: center; background: var(--azul); color: #fff; font: 800 1.2rem var(--display); }
 .patro { align-items: center; }
 .patro-i { display: inline-flex; align-items: center; gap: 10px; color: var(--tinta); text-decoration: none; font: 800 1.2rem var(--display); }
 .patro-i img { height: 56px; width: auto; max-width: 220px; border-radius: 8px; display: block; } .patro-i.principal img { height: 76px; } .patro-i.oro img { height: 64px; }

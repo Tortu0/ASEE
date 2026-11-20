@@ -10,7 +10,9 @@ async function lista() {
   return { html: html`<div class="cab"><h1>Plantilla</h1><span class="suave">${js.length} jugadores en activo</span></div>
     ${js.length ? grupos.map(([k, l]) => html`<section><h2 style="margin-bottom:12px">${POS[k]}s</h2><div class="plantilla">${l.map(j => {
       const foto = urlSegura(j.fotoUrl);
-      return html`<a class="jug" href="#/jugadores/${j.jugadorId}"><span class="dorsal" aria-hidden="true">${j.dorsal}</span>${foto ? html`<img class="jug-foto" src="${foto}" alt="${j.nombre}" loading="lazy" onerror="this.remove()">` : ''}<strong>${j.nombre}</strong><span class="suave peq">Dorsal ${j.dorsal}${j.alturaCm ? ` · ${j.alturaCm} cm` : ''}</span></a>`;
+      return html`<a class="jug" href="#/jugadores/${j.jugadorId}">${foto
+        ? html`<img class="jug-foto" src="${foto}" alt="${j.nombre}" onerror="this.nextElementSibling.style.display='';this.remove()"><span class="dorsal" aria-hidden="true" style="display:none">${j.dorsal}</span>`
+        : html`<span class="dorsal" aria-hidden="true">${j.dorsal}</span>`}<strong>${j.nombre}</strong><span class="suave peq">Dorsal ${j.dorsal}${j.alturaCm ? ` · ${j.alturaCm} cm` : ''}</span></a>`;
     })}</div></section>`) : vacio('La plantilla aún no está publicada.')}` };
 }
 

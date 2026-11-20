@@ -138,6 +138,7 @@ services:
       - "8086:8086"
     environment:
       - SERVER_PORT=8086
+      - SUPABASE_URL=${SUPABASE_URL:-}
       - JWT_SECRET=${JWT_SECRET}
       - MONGODB_URI=mongodb://mongo:27017
     depends_on:

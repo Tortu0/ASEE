@@ -48,7 +48,7 @@ public class DatosEjemploInitializer implements CommandLineRunner {
                                     new StockTalla("L", 18),
                                     new StockTalla("XL", 10)
                             ),
-                            fotoProducto("primera_equipacion.png")
+                            fotoProducto("primera_equipacion.webp")
                     ),
                     crearProducto(
                             productoId(2),
@@ -62,7 +62,7 @@ public class DatosEjemploInitializer implements CommandLineRunner {
                                     new StockTalla("L", 14),
                                     new StockTalla("XL", 6)
                             ),
-                            fotoProducto("segunda_equipacion.png")
+                            fotoProducto("segunda_equipacion.webp")
                     ),
                     crearProducto(
                             productoId(3),
@@ -71,7 +71,7 @@ public class DatosEjemploInitializer implements CommandLineRunner {
                             "bufanda",
                             new BigDecimal("14.50"),
                             List.of(new StockTalla("unica", 35)),
-                            fotoProducto("bufanda.png")
+                            fotoProducto("bufanda.webp")
                     ),
                     crearProducto(
                             productoId(4),
@@ -80,7 +80,7 @@ public class DatosEjemploInitializer implements CommandLineRunner {
                             "gorra",
                             new BigDecimal("16.00"),
                             List.of(new StockTalla("unica", 25)),
-                            fotoProducto("gorra.png")
+                            fotoProducto("gorra.webp")
                     ),
                     crearProducto(
                             productoId(5),
@@ -89,7 +89,7 @@ public class DatosEjemploInitializer implements CommandLineRunner {
                             "accesorio",
                             new BigDecimal("29.90"),
                             List.of(new StockTalla("unica", 15)),
-                            fotoProducto("mochila.png")
+                            fotoProducto("mochila.webp")
                     ),
                     crearProducto(
                             productoId(6),
@@ -98,7 +98,7 @@ public class DatosEjemploInitializer implements CommandLineRunner {
                             "otro",
                             new BigDecimal("24.95"),
                             List.of(new StockTalla("unica", 20)),
-                            fotoProducto("balon.png")
+                            fotoProducto("balon.webp")
                     )
             );
 

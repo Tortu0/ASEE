@@ -21,6 +21,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
@@ -40,6 +41,9 @@ public class DatosEjemploInitializer implements CommandLineRunner {
     private final TituloRepository palmares;
     private final CategoriaCanteraRepository cantera;
     private final PatrocinadorRepository patrocinadores;
+
+    @Value("${SUPABASE_URL:}")
+    private String supabaseUrl;
 
     public DatosEjemploInitializer(HistoriaRepository historia,
                                    IdentidadRepository identidad,
@@ -115,10 +119,10 @@ public class DatosEjemploInitializer implements CommandLineRunner {
             return;
         }
         junta.save(new Junta(Junta.ID_UNICO, List.of(
-                new MiembroJunta("Ana García", "Presidenta", null),
-                new MiembroJunta("Manuel Rubio", "Vicepresidente", null),
-                new MiembroJunta("Lucía Herrera", "Secretaria", null),
-                new MiembroJunta("Marta Ruiz", "Tesorera", null))));
+                new MiembroJunta("Ana García", "Presidenta", fotoClub("presidenta.webp", null)),
+                new MiembroJunta("Manuel Rubio", "Vicepresidente", fotoClub("vicepresidente.webp", null)),
+                new MiembroJunta("Lucía Herrera", "Secretaria", fotoClub("secretaria.webp", null)),
+                new MiembroJunta("Marta Ruiz", "Tesorera", fotoClub("tesorera.webp", null)))));
         log.info("Junta: cargada de ejemplo");
     }
 
@@ -131,11 +135,11 @@ public class DatosEjemploInitializer implements CommandLineRunner {
                 new Instalacion(instalacionId(1), "Pabellón Municipal de Madroñera",
                         "Calle del Deporte s/n, Madroñera (Cáceres)",
                         "Se accede desde la carretera principal; hay aparcamiento gratuito junto al pabellón y acceso adaptado para personas con movilidad reducida.",
-                        600, List.of("/img/club/pabellon.svg"), null, null),
+                        600, List.of(fotoClub("pabellon.webp", "/img/club/pabellon.svg")), null, null),
                 new Instalacion(instalacionId(2), "Pista exterior",
                         "Calle del Deporte s/n, Madroñera (Cáceres)",
                         "Junto al pabellón. De uso libre cuando no hay entrenamientos de la cantera.",
-                        null, List.of("/img/club/pista-exterior.svg"), null, null)));
+                        null, List.of(fotoClub("pista.webp", "/img/club/pista-exterior.svg")), null, null)));
         log.info("Instalaciones: cargadas 2 de ejemplo");
     }
 
@@ -174,18 +178,23 @@ public class DatosEjemploInitializer implements CommandLineRunner {
             return;
         }
         patrocinadores.saveAll(List.of(
-                new Patrocinador(patrocinadorId(1), "Banco Rural", "/img/patrocinadores/banco-rural.svg",
+                new Patrocinador(patrocinadorId(1), "Banco Rural", fotoClub("banco_rural.webp", "/img/patrocinadores/banco-rural.svg"),
                         "https://www.extremadura.com", NivelPatrocinio.principal),
-                new Patrocinador(patrocinadorId(2), "Ferretería López", "/img/patrocinadores/ferreteria-lopez.svg",
+                new Patrocinador(patrocinadorId(2), "Ferretería López", fotoClub("ferreteria_lopez.webp", "/img/patrocinadores/ferreteria-lopez.svg"),
                         "https://www.turismoextremadura.com", NivelPatrocinio.oro),
-                new Patrocinador(patrocinadorId(3), "Bar El Pabellón", "/img/patrocinadores/bar-el-pabellon.svg",
+                new Patrocinador(patrocinadorId(3), "Bar El Pabellón", fotoClub("bar_el_pabellon.webp", "/img/patrocinadores/bar_el_pabellon.svg"),
                         null, NivelPatrocinio.plata),
-                new Patrocinador(patrocinadorId(4), "Talleres Ruiz", "/img/patrocinadores/talleres-ruiz.svg",
+                new Patrocinador(patrocinadorId(4), "Talleres Ruiz", fotoClub("talleres_ruiz.webp", "/img/patrocinadores/talleres-ruiz.svg"),
                         null, NivelPatrocinio.colaborador)));
         log.info("Patrocinadores: cargados 4 de ejemplo");
     }
 
     // ---------- UUID fijos: iguales en todos los ordenadores ----------
+
+    private String fotoClub(String archivo, String respaldo) {
+        if (supabaseUrl == null || supabaseUrl.isBlank()) return respaldo;
+        return supabaseUrl.replaceAll("/+$", "") + "/storage/v1/object/public/club-media/club/" + archivo;
+    }
 
     private static UUID patrocinadorId(int n) {
         return uuid("50000000", n);
