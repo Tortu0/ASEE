@@ -40,3 +40,10 @@ Al arrancar carga los asientos y tarifas de los partidos definidos en `entradas.
 - Pasarela de pago (cobro, reembolsos).
 - Validación real del JWT (algoritmo y claves a acordar con Usuarios / API Gateway).
 - Decidir si el descuento de socio se suma a la tarifa `socio` o es alternativo.
+## Tests
+
+```bash
+./mvnw test
+```
+
+Pruebas unitarias sin infraestructura externa (no necesitan MongoDB ni RabbitMQ): `EntradasService` (Mockito + MongoTemplate simulado), clientes HTTP, publicador de eventos, controladores (`@WebMvcTest` con la seguridad real), manejo de errores, `JwtUser`, configuración y validación de DTO.
