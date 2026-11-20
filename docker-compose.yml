@@ -101,6 +101,7 @@ services:
     environment:
       - SERVER_PORT=8084
       - MONGODB_URI=mongodb://mongo:27017/compras
+      - DATOS_EJEMPLO=true
       - RABBIT_HOST=rabbitmq
       - JWT_SECRET=${JWT_SECRET}
       - USUARIOS_URL=http://usuarios:8081/v1

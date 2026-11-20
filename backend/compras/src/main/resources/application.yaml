@@ -16,6 +16,7 @@ spring:
     password: ${RABBIT_PASS:guest}
 
 compras:
+  datos-ejemplo: ${DATOS_EJEMPLO:false}
   security:
     # Mismo secreto que Usuarios (JWT_SECRET). Si se define, Compras exige y valida el Bearer HS256 y IGNORA
     # X-User-Id / X-User-Role. Si está vacío, confía en las cabeceras que inyecta el API Gateway: en ese caso
