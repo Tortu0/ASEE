@@ -473,6 +473,62 @@ Nota: sustituir el valor de `JWT_SECRET` por el mismo usado en Compose.
 
 ## 10. Conclusion
 
-El proyecto ya supera una base considerable de entrega: microservicios, persistencia, Docker, gateway, JWT, RabbitMQ, WebSocket, frontend y varios flujos reales. La entrega no debe evaluar solo el numero de servicios, sino que todas las rutas clave y contratos coincidan.
+El proyecto ya supera una base considerable de entrega: microservicios, persistencia, Docker, gateway, JWT, RabbitMQ, WebSocket, frontend y varios flujos reales.
 
-Si se corrigen Compras, Entradas y seguridad directa en Deportivo/Institucional, y se añade una prueba frontend minima junto con seed de tienda, el proyecto quedara mucho mas robusto y defendible en 2 dias.
+## 11. Segunda revision — 20 de noviembre de 2026
+
+### Problemas de la revision anterior que ya estan resueltos
+
+1. **Compras coincide con el contrato.** El smoke test verifico correctamente `productoId`, `stock[]` y `categoria`, y ya paso el flujo completo de carrito y pedidos.
+2. **La tienda tiene datos reales.** El navegador muestra seis productos reales con categoria y precio.
+3. **Deportivo e Institucional tienen seguridad JWT propia.** El smoke test confirma que rechazan escrituras directas sin token.
+4. **Deportivo e Institucional tienen pruebas funcionales nuevas.** Deportivo paso 36 tests y Institucional 30 tests, ademas de su contexto.
+5. **Estadisticas tiene mas cobertura.** Ya no aparecen skips en sus pruebas ejecutadas: 88 tests pasan.
+6. **Las vulnerabilidades npm visibles en la revision anterior ya no aparecen en el analisis de dependencias de produccion.**
+
+### Prueba integrada actual
+
+- Resultado: **37 comprobaciones correctas, 0 fallos y 0 avisos**.
+- Solo quedaron fuera tres comprobaciones que necesitan credenciales de staff: alta de socio, paso de estado de pedidos y estadisticas staff mediante RS256.
+- Las rutas publicas de los seis microservicios respondieron en `/v1`.
+- Entradas paso reserva, pago, QR y mensaje RabbitMQ a Usuarios.
+- Compras paso carrito, stock, idempotencia, pedidos, permisos de propietario y reposicion de stock.
+- Estadisticas paso validacion, contrato y WebSocket.
+
+### Pruebas automatizadas observadas
+
+| Microservicio | Tests que pasan |
+|---|---:|
+| Compras | 78 |
+| Deportivo | 36 |
+| Estadisticas | 88 |
+| Institucional | 30 |
+| Usuarios | 52 |
+| Entradas | Pendientes de ejecutar localmente |
+
+Entradas sigue teniendo dos problemas de entorno/codigo:
+
+- Su compilacion local no puede resolverse con el JDK 25 disponible porque faltan los metodos generados por Lombok.
+- Docker lo compila y ejecuta correctamente con Java 21, y el smoke test lo valida en ejecucion.
+- Tiene ahora mas de 50 pruebas existentes en sus ficheros de test, pero no ha sido posible ejecutarlas en el JDK local disponible.
+
+### Nivel actual para la entrega
+
+La entrega ha pasado de una base incompleta a un proyecto de nivel alto.
+
+Es adecuado presentar el proyecto si se mantiene:
+
+- Un `.env` con secretos validos.
+- Docker Compose funcionando.
+- Usuarios de prueba registrados.
+- Al menos un producto en cada flujo que se vaya a demostrar.
+- Las credenciales staff disponibles si se quieren mostrar las acciones de gestion.
+
+Los riesgos residuales son menores y no impiden una entrega razonablemente completa:
+
+- Preparar JDK 21 para ejecutar todas las pruebas de Entradas.
+- Integrar Lombok correctamente en el proceso Maven de Entradas.
+- Añadir una suite frontend Playwright/Cypress si se exige una prueba automatizada explicita de UI.
+- Mantener una prueba staff completa para mostrar la gestion completa.
+
+Valoracion general: **nivel bueno-alto, listo para una defensa si se ensaya el arranque y los dos flujos principales: entradas y tienda**.
