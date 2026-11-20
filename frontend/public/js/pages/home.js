@@ -1,9 +1,9 @@
 import { api } from '../api.js';
 import { html, fmt, vacio } from '../ui.js';
-import { PISTA, filaPartido, resumenNoticia, marcadorNuestro, temporadaDe, jugadoresMapa } from '../comun.js';
+import { PISTA, patro, filaPartido, resumenNoticia, marcadorNuestro, temporadaDe, jugadoresMapa } from '../comun.js';
 
 export default async function () {
-  const [partidos, noticias, patro] = await Promise.all([api.partidos(), api.noticias(), api.patrocinadores().catch(() => [])]);
+  const [partidos, noticias, patros] = await Promise.all([api.partidos(), api.noticias(), api.patrocinadores().catch(() => [])]);
   const orden = [...partidos].sort((a, b) => a.fechaHora.localeCompare(b.fechaHora));
   const vivo = orden.find(p => p.estado === 'en_juego'), prox = orden.filter(p => p.estado === 'programado' && new Date(p.fechaHora) > Date.now());
   const foco = vivo || prox[0], ult = [...orden].reverse().find(p => p.estado === 'finalizado'), nombre = window.CLUB?.nombreOficial || 'El club';
@@ -33,5 +33,5 @@ export default async function () {
   <section><div class="cab"><h2>Últimas noticias</h2><a href="#/noticias">Todas las noticias</a></div>
     ${noticias.length ? html`<div class="grid2" style="gap:0 48px">${[...noticias].sort((a, b) => b.fechaPublicacion.localeCompare(a.fechaPublicacion)).slice(0, 4).map(n => resumenNoticia(n))}</div>` : vacio('Todavía no hay noticias.')}</section>
 
-  ${patro.length ? html`<section><h2 style="margin-bottom:12px">Nos acompañan</h2><div class="patro">${patro.map(p => html`<span class="${p.nivel}">${p.enlace ? html`<a href="${p.enlace}" rel="noopener" style="color:inherit">${p.nombre}</a>` : p.nombre}</span>`)}</div></section>` : ''}` };
+  ${patros.length ? html`<section><h2 style="margin-bottom:12px">Nos acompañan</h2><div class="patro">${patros.map(patro)}</div></section>` : ''}` };
 }

@@ -40,6 +40,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return respuesta(HttpStatus.CONFLICT, ex.getMessage(), List.of());
     }
 
+    @ExceptionHandler(AccesoDenegadoException.class)
+    public ResponseEntity<ErrorResponse> accesoDenegado(AccesoDenegadoException ex) {
+        return respuesta(HttpStatus.FORBIDDEN, ex.getMessage(), List.of());
+    }
+
     // ---------- Cualquier otro fallo inesperado ----------
 
     @ExceptionHandler(Exception.class)

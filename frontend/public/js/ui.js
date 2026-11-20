@@ -42,3 +42,9 @@ export const formData = f => Object.fromEntries(new FormData(f));
 export const acts = {}, forms = {}, cleanups = [];
 export const onLeave = f => cleanups.push(f);
 export const volver = () => new URLSearchParams(location.hash.split('?')[1] || '').get('volver');
+export const urlSegura = u => typeof u === 'string' && /^(https?:\/\/[^\s"'<>]+|\/(?!\/)[^\s"'<>]*)$/i.test(u.trim()) && !/\.example(\/|$)/i.test(u) ? u.trim() : null;
+export const iniciales = n => String(n || '?').split(/\s+/).filter(Boolean).slice(0, 2).map(x => x[0].toUpperCase()).join('');
+export const imagen = (url, alt, reserva, clase = '') => {
+  const u = urlSegura(url), r = reserva || '';
+  return html`<img class="${clase}" src="${u || r}" alt="${alt || ''}" loading="lazy" ${r ? raw(`onerror="this.onerror=null;this.src='${r}'"`) : ''}>`;
+};

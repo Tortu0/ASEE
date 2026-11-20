@@ -12,6 +12,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
+import com.asee.deportivo.security.UsuarioAutenticado;
+import org.springframework.security.core.Authentication;
 
 import java.net.URI;
 import java.util.List;
@@ -43,9 +45,10 @@ public class NoticiaController {
     @PostMapping
     public ResponseEntity<NoticiaResponse> crear(
             @Valid @RequestBody NoticiaCreate dto,
-            @RequestHeader(name = "X-User-Id", required = false) UUID autorId) {
+            Authentication auth) {
 
-        Noticia creada = service.crear(dto, autorId);
+        // El autor es el usuario del token (verificado), no una cabecera que pueda inventarse el cliente
+        Noticia creada = service.crear(dto, UsuarioAutenticado.id(auth));
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{id}")
                 .buildAndExpand(creada.noticiaId())
